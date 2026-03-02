@@ -7,20 +7,16 @@ const FAQSection = () => {
 
   const faqs = [
     {
-      question: "Is ResumeAI really free?",
-      answer: "Yes! We're currently in beta and offering full free access while we improve the product based on user feedback."
+      question: "Will ResumeAI always be free?",
+      answer: "Yesss! We are committed to keeping the core resume builder and ATS analysis free for all users. Premium features may be added in the future, but the essential tools will always be accessible at no cost."
     },
     {
       question: "Do I need to create an account?",
-      answer: "You can try the resume builder without signup. Create an account (free) to save your work and access the job tracker."
+      answer: "You can try the resume builder without signup. Create an account (free) to save your work and access the application tracker."
     },
     {
       question: "What happens to my resume data?",
       answer: "Your data is private and secure. We never share your information with third parties or use it for marketing."
-    },
-    {
-      question: "Will ResumeAI always be free?",
-      answer: "Beta users enjoy full free access. When we launch premium features, early users will receive special founder pricing."
     },
     {
       question: "How does the ATS analysis work?",
@@ -30,10 +26,6 @@ const FAQSection = () => {
       question: "Can I use this for any industry?",
       answer: "Currently optimized for tech roles (software engineering, product, design). Support for other industries coming soon."
     },
-    {
-      question: "Is this actually better than other resume builders?",
-      answer: "ResumeAI was built by a developer who personally used it to land a US remote internship. It focuses specifically on beating ATS systems with AI-powered optimization, not just templates."
-    }
   ];
 
   return (
@@ -107,25 +99,6 @@ const FAQSection = () => {
               </motion.div>
             ))}
           </div>
-
-          {/* Bottom CTA */}
-          <motion.div
-            className="text-center mt-12"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Still have questions?
-            </p>
-            <button
-              className="text-blue-600 dark:text-cyan-400 hover:underline font-medium"
-              onClick={() => window.location.href = '/contact'}
-            >
-              Get in touch with us
-            </button>
-          </motion.div>
         </motion.div>
       </div>
     </section>

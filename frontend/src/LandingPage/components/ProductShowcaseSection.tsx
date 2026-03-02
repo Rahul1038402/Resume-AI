@@ -22,7 +22,7 @@ const ProductShowcaseSection = () => {
     },
     {
       IconComponent: ClipboardList,
-      title: "Job Tracker",
+      title: "Application Tracker",
       description: "Track all your applications in one organized dashboard",
       image: "/screenshots/tracker.png",
       color: "#8b5cf6"

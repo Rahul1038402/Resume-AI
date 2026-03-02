@@ -3,7 +3,6 @@ import NumberedFeatureCards from "./components/CardComponents";
 import PainPointsSection from "./components/PainPointsSection";
 import HeroSection from "@/LandingPage/components/HeroSection";
 import StatsSection from "@/LandingPage/components/StatsSection";
-import FounderStorySection from "@/LandingPage/components/FounderStorySection";
 import WhyResumeAISection from "@/LandingPage/components/WhyResumeAISection";
 import CTASection from "@/LandingPage/components/CTASection";
 import FAQSection from "@/LandingPage/components/FAQSection";
@@ -16,9 +15,6 @@ const Index = () => {
       <section className="overflow-hidden">
         <HeroSection />
       </section>
-
-      {/* Founder Story - builds trust */}
-      <FounderStorySection />
 
       {/* Problem/Solution comparison */}
       <PainPointsSection />

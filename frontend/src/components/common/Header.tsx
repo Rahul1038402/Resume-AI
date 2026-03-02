@@ -10,7 +10,7 @@ const Header = () => {
         { label: "Home", ariaLabel: "HomePage", href: "/" },
         { label: "Builder", ariaLabel: "Resume Builder", href: "/builder" },
         { label: "Analyzer", ariaLabel: "Resume Analyzer", href: "/analyzer" },
-        { label: "Job Tracker", ariaLabel: "Job Tracker", href: "/tracker" }
+        { label: "Application Tracker", ariaLabel: "Application Tracker", href: "/tracker" }
       ]
     },
     {

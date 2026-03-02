@@ -9,19 +9,11 @@ const Footer = () => {
     { icon: Linkedin, href: "https://www.linkedin.com/in/rahul-malll-85989327b/", label: "LinkedIn" },
     { icon: Github, href: "https://github.com/Rahul1038402", label: "GitHub" }
   ];
-
   return (
     <>
       {/* Footer Navigation */}
-      <div className="relative w-full bg-gradient-to-t from-white/95 via-white/70 to-white/0 dark:from-black/95 dark:via-black/70 dark:to-black/0 backdrop-blur-sm">
-        {/* Gradient Border Top */}
-        <div
-          className="absolute top-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-                         dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
-        />
+      <div className="relative w-full border-t border-gray-300 dark:border-gray-700 bg-gradient-to-t from-white/95 via-white/70 to-white/0 dark:from-black/95 dark:via-black/70 dark:to-black/0 backdrop-blur-sm">
         <div className="flex flex-col justify-center items-center container mx-auto px-4 pb-8 relative pt-6">
-          <div className="flex items-center gap-2 pb-12">
-            {/* Logo Container */}
             <div className="flex items-center gap-2">
               <Link to="/" className="flex items-center gap-2 relative z-50">
                 <Logo className="w-8 h-8 sm:w-10 sm:h-10" />
@@ -30,10 +22,9 @@ const Footer = () => {
                 </span>
               </Link>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-36 mb-12 relative pb-12">
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-12 mb-12 relative pb-12">
             <div className='w-fit h-fit backdrop-blur-md'>
-              <h4 className="text-2xl text-resume-primary dark:text-resume-secondary mb-10">Features</h4>
+              <h4 className="font-semibold text-xl text-resume-primary dark:text-resume-secondary mb-10">Features</h4>
               <ul className="space-y-6">
                 <li>
                   <Link to="/builder" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">Resume Builder</Link>
@@ -48,10 +39,10 @@ const Footer = () => {
             </div>
 
             <div className='w-fit h-fit backdrop-blur-md'>
-              <h4 className="text-2xl text-resume-primary dark:text-resume-secondary mb-10">About Us</h4>
+              <h4 className="font-semibold text-xl text-resume-primary dark:text-resume-secondary mb-10">About Us</h4>
               <ul className="space-y-6">
                 <li>
-                  <Link to="/about" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">About ResumeAI</Link>
+                  <Link to="/about" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">About Resume AI</Link>
                 </li>
                 <li>
                   <Link to="/aboutme" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">About Me</Link>
@@ -67,11 +58,10 @@ const Footer = () => {
               hue={10}
               forceHoverState={false}
             />
-
             {/* Gradient Border Bottom */}
             <div
               className="absolute bottom-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-                         dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
+    dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
             />
           </div>
 

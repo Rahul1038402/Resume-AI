@@ -256,12 +256,9 @@ const CardNav: React.FC<CardNavProps> = ({
         >
             <nav
                 ref={navRef}
-                className={`card-nav border dark:border-gray-700 block h-[60px] p-0 rounded-3xl shadow-md relative overflow-hidden will-change-[height] transition-colors duration-300
-                        ${isExpanded ? "open" : ""}
-                        ${isScrolled
-                        ? "bg-white/90 dark:bg-black/90"
-                        : "bg-white/50 dark:bg-black/50"
-                    } backdrop-blur-md`}>
+                className={`card-nav border dark:border-gray-700 block h-[60px] p-0 rounded-3xl shadow-md bg-white/50 dark:bg-black/50
+                    backdrop-blur-md relative overflow-hidden will-change-[height] transition-colors duration-300
+                        ${isExpanded ? "open" : ""}`}>
                 <div className="card-nav-top absolute inset-x-0 top-0 h-[60px] flex items-center justify-between p-2 pl-[1.1rem] z-[2]">
                     {/* Logo Container */}
                     <div className="logo-container flex items-center order-1">

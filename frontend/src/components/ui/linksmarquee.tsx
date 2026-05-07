@@ -14,9 +14,9 @@ export default function IconMarquee({
   className = '',
 }: IconMarqueeProps) {
   const icons = [
-    { Icon: Github, color: '#333', href: 'https://github.com/Rahul1038402/' },
-    { Icon: Linkedin, color: '#0077B5', href: 'https://www.linkedin.com/in/rahul-malll-85989327b/' },
-    { Icon: Instagram, color: '#E4405F', href: 'https://www.instagram.com/ig__rahul70/' },
+    { Icon: Github, color: '#333', href: 'https://github.com/Rahul1038402' },
+    { Icon: Linkedin, color: '#0077B5', href: 'https://www.linkedin.com/in/rahul-kr-mall' },
+    { Icon: Instagram, color: '#E4405F', href: 'https://www.instagram.com/ig__rahul70' },
     { Icon: Mail, color: '#EA4335', href: 'mailto:rahul1038402@gmail.com' },
   ];
 

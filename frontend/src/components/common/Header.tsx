@@ -29,7 +29,7 @@ const Header = () => {
       links: [
         { label: "Email", ariaLabel: "Email us", href: "mailto:rahul1038402@gmail.com", external: true },
         { label: "Twitter", ariaLabel: "Twitter", href: "https://x.com/Rahul_Kr_Mall", external: true },
-        { label: "LinkedIn", ariaLabel: "LinkedIn",href: "https://www.linkedin.com/in/rahul-malll-85989327b/", external: true }
+        { label: "LinkedIn", ariaLabel: "LinkedIn",href: "https://www.linkedin.com/in/rahul-kr-mall", external: true }
       ]
     }
   ];

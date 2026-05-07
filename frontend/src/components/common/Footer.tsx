@@ -6,7 +6,7 @@ import { Twitter, Linkedin, Github } from 'lucide-react';
 const Footer = () => {
   const socialLinks = [
     { icon: Twitter, href: "https://x.com/Rahul_Kr_Mall", label: "Twitter" },
-    { icon: Linkedin, href: "https://www.linkedin.com/in/rahul-malll-85989327b/", label: "LinkedIn" },
+    { icon: Linkedin, href: "https://www.linkedin.com/in/rahul-kr-mall", label: "LinkedIn" },
     { icon: Github, href: "https://github.com/Rahul1038402", label: "GitHub" }
   ];
   return (

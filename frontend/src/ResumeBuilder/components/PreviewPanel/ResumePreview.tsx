@@ -235,7 +235,7 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
                                             {exp.startDate} - {exp.endDate}
                                         </span>
                                     </div>
-                                    {exp.achievements.length > 0 && exp.achievements[0] && (
+                                    {exp.achievements.some(a => a.trim()) && (
                                         <ul style={{
                                             fontSize: `${sizes.body}px`,
                                             marginTop: '2pt',
@@ -333,7 +333,7 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
                                             Tech Stack: {project.technologies}
                                         </p>
                                     )}
-                                    {project.description.length > 0 && project.description[0] && (
+                                    {project.description.some(d => d.trim()) && (
                                         <ul style={{
                                             fontSize: `${sizes.body}px`,
                                             marginTop: '2pt',

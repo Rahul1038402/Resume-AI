@@ -21,10 +21,8 @@ const JobTracker = () => {
     const [draggedItem, setDraggedItem] = useState(null);
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const [showSortDropdown, setShowSortDropdown] = useState(false);
-    const searchTimeoutRef = useRef(null);
     const statusRef = useRef<HTMLDivElement>(null);
     const sortRef = useRef<HTMLDivElement>(null);
-    const [isPageLoading, setIsPageLoading] = useState(true);
 
     const [formData, setFormData] = useState({
         job_role: '',
@@ -65,15 +63,6 @@ const JobTracker = () => {
         { value: 'role_desc', label: 'Job Role (Z-A)' }
     ];
 
-    // Handle initial page load
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsPageLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, []);
-
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
@@ -90,7 +79,8 @@ const JobTracker = () => {
 
     useEffect(() => {
         checkUser();
-        setupAuthListener();
+        const subscription = setupAuthListener();
+        return () => subscription?.unsubscribe();
     }, []);
 
     useEffect(() => {
@@ -158,7 +148,7 @@ const JobTracker = () => {
     };
 
     const setupAuthListener = () => {
-        supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user || null);
             if (session?.user) {
                 fetchApplications();
@@ -166,6 +156,7 @@ const JobTracker = () => {
                 setApplications([]);
             }
         });
+        return subscription;
     };
 
     const signInWithGoogle = async () => {
@@ -205,19 +196,8 @@ const JobTracker = () => {
         }
     };
 
-    // Debounced search handler
     const handleSearchChange = (value) => {
         setSearchQuery(value);
-
-        // Clear existing timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Set new timeout for debounce effect (300ms)
-        searchTimeoutRef.current = setTimeout(() => {
-            // Search is automatically handled by useEffect
-        }, 300);
     };
 
     const handleStatusFilterChange = (status) => {
@@ -354,8 +334,8 @@ const JobTracker = () => {
         setDraggedItem(null);
     };
 
-    // Early return for loading state
-    if (isPageLoading) {
+    // Loader while the Supabase session is being restored
+    if (loading) {
         return (
             <Loader />
         );

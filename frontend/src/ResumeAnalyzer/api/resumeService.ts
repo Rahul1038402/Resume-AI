@@ -89,6 +89,18 @@ function normalizeAnalysisResponse(apiResponse: any): AnalysisResult {
     relevance_label: data.relevance_label || "Not Relevant"
   }));
 
+  if (relevant_projects.length === 0) {
+    for (const name of apiResponse.relevant_projects || []) {
+      relevant_projects.push({
+        name,
+        skills: projectsWithSkills[name] || [],
+        metrics: quantifiableImpacts[name] || [],
+        relevance_score: 0,
+        relevance_label: "Not Rated"
+      });
+    }
+  }
+
   // Use the consolidated recommendations from the API response
   const recommendations = apiResponse.recommendations || [];
 
@@ -113,9 +125,11 @@ function normalizeAnalysisResponse(apiResponse: any): AnalysisResult {
     }
   }
 
+  // Without a target job the backend returns no job_match block, so fall
+  // back to the top level score instead of reporting 0
   const result: AnalysisResult = {
-    score: job.overall_relevance_score || 0,
-    target_job: job.job_title,
+    score: job.overall_relevance_score ?? apiResponse.score ?? apiResponse.analysis?.achieved_score ?? 0,
+    target_job: job.job_title ?? apiResponse.target_job,
     matched_skills: (job.matched_skills || []).reduce((acc: Record<string, number>, skill: string) => {
       acc[skill] = 5; // Default weight
       return acc;
@@ -134,7 +148,7 @@ function normalizeAnalysisResponse(apiResponse: any): AnalysisResult {
       skills_with_metrics: Object.values(quantifiableImpacts).filter((metrics: any) => 
         Array.isArray(metrics) && metrics.length > 0
       ).length,
-      achieved_score: job.skill_match_score || 0,
+      achieved_score: job.skill_match_score ?? apiResponse.analysis?.achieved_score ?? 0,
       project_bonus: Math.max(0, (job.avg_project_relevance || 0) - 50) * 0.5,
       diversity_bonus: Math.max(0, skills.length - 10) * 0.2,
     },
@@ -374,7 +388,7 @@ export const generateResumePDF = async (
         layoutSettings: {
           margins: layoutSettings.margins,
           pageSize: layoutSettings.pageSize,
-          fontFamily: layoutSettings.fontFamily,
+          fontFamily: layoutSettings.fontFamily || 'Georgia, serif',
         }
       })
     });

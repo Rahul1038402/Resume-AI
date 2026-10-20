@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Layout from "@/components/common/Layout";
 import ResumeUploader from "@/components/ResumeUploader";
 import JobSelector from "@/ResumeAnalyzer/component/JobSelector";
@@ -6,10 +7,10 @@ import ResumeResults from "@/ResumeAnalyzer/component/ResumeResults";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { analyzeResume } from "@/ResumeAnalyzer/api/resumeService";
+import type { AnalysisResult } from "@/ResumeAnalyzer/types/analysis";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 import GradientText from "@/components/ui/GradientText";
-import Loader from "@/components/common/Loader";
 import ShinyText from "@/components/ui/ShinyText";
 {/* const GalaxyAttackGame = lazy(() => import("@/components/GalaxyAttack")); */}
 
@@ -24,27 +25,22 @@ const GameLoadingSkeleton = () => (
 );
 
 const Analyzer = () => {
+  // The landing page runs a first analysis in its hero and hands the finished
+  // result over here, so arriving from it does not mean uploading the same
+  // file a second time.
+  const location = useLocation();
+  const handedOver = (location.state as { result?: AnalysisResult } | null)?.result ?? null;
+
   const [file, setFile] = useState(null);
   const [targetJob, setTargetJob] = useState(null);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(handedOver);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [showGamePrompt, setShowGamePrompt] = useState(false);
   const [showGame, setShowGame] = useState(false);
-  const [analysisState, setAnalysisState] = useState('idle'); // 'idle', 'analyzing', 'completed', 'error'
+  const [analysisState, setAnalysisState] = useState(handedOver ? 'completed' : 'idle'); // 'idle', 'analyzing', 'completed', 'error'
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [isPageLoading, setIsPageLoading] = useState(true);
-
-  // Handle initial page load
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleFileSelected = (selectedFile) => {
     setFile(selectedFile);
     setResult(null);
@@ -80,8 +76,8 @@ const Analyzer = () => {
       setAnalysisState('analyzing');
     }
 
-    // Simulate loading progress over 2-3 seconds
-    const loadingDuration = 2500; // 2.5 seconds
+    // Progress animation runs alongside the request instead of delaying it
+    const loadingDuration = 2500;
     const intervalTime = 50; // Update every 50ms
     const steps = loadingDuration / intervalTime;
     let currentStep = 0;
@@ -95,9 +91,6 @@ const Analyzer = () => {
         clearInterval(progressInterval);
       }
     }, intervalTime);
-
-    // Wait for the minimum loading time
-    await new Promise(resolve => setTimeout(resolve, loadingDuration));
 
     try {
       const analysisResult = await analyzeResume(file, targetJob, [], jobDescription);
@@ -135,13 +128,6 @@ const Analyzer = () => {
   const openRecommendedFormat = () => {
     window.open('/recommended-resume-format.html', '_blank');
   };
-
-  // Early return for loading state
-  if (isPageLoading) {
-    return (
-      <Loader/>
-    );
-  }
 
   return (
     <Layout>

@@ -46,10 +46,13 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
     const [scanDays, setScanDays] = useState(7);
 
     useEffect(() => {
-        if (user) {
-            checkGmailConnection();
-            setupAutoSync();
-        }
+        if (!user) return;
+
+        checkGmailConnection();
+        // setupAutoSync returns the interval id; without clearing it the
+        // timer survived unmount and kept firing syncs
+        const intervalId = setupAutoSync();
+        return () => clearInterval(intervalId);
     }, [user]);
 
     const checkGmailConnection = async () => {
@@ -91,7 +94,7 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
             }
         }, 1000 * 60 * 60);
 
-        return () => clearInterval(interval);
+        return interval;
     };
 
     const connectGmail = async () => {

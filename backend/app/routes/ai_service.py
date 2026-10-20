@@ -1,11 +1,13 @@
 """
 AI Service for Resume Builder
 Handles Groq API integration with streaming support
-Updated: December 2024 - Current Groq models
+Model names come from app/llm_config.py
 """
 import os
 from groq import Groq
 from typing import Generator, List, Dict
+
+from app.llm_config import PRIMARY_MODEL, FALLBACK_MODEL, REASONING_EFFORT
 
 class AIService:
     def __init__(self):
@@ -15,16 +17,14 @@ class AIService:
         
         self.client = Groq(api_key=self.api_key)
         
-        # Model configuration (Updated December 2024)
-        # Primary: Best overall performance & speed (276 tokens/sec)
-        self.primary_model = "llama-3.3-70b-versatile"
+        self.primary_model = PRIMARY_MODEL
+        self.fallback_model = FALLBACK_MODEL
+        self.reasoning_effort = REASONING_EFFORT
         
-        # Fallback: Ultra-fast for simple tasks
-        self.fallback_model = "llama-3.1-8b-instant"
-        
-        # Generation parameters
+        # Generation parameters. Reasoning tokens are drawn from max_tokens,
+        # so this is higher than the pre-gpt-oss value of 1024.
         self.temperature = 0.7
-        self.max_tokens = 1024
+        self.max_tokens = 3000
         self.top_p = 0.9
     
     def stream_completion(self, messages: List[Dict[str, str]], 
@@ -49,12 +49,16 @@ class AIService:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
+                reasoning_effort=self.reasoning_effort,
                 stream=True
             )
             
             for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                if not chunk.choices:
+                    continue
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
         
         except Exception as e:
             # Try fallback model
@@ -86,6 +90,7 @@ class AIService:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
+                reasoning_effort=self.reasoning_effort,
                 stream=False
             )
             

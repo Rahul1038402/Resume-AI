@@ -7,6 +7,7 @@ from typing import Dict, List, Any, Optional
 import time
 from dotenv import load_dotenv
 from groq import Groq
+from app.llm_config import MODELS, REASONING_EFFORT
 
 load_dotenv()
 
@@ -22,11 +23,8 @@ TIMEOUT_CONFIG = {
     "complex_analysis": 60,
 }
 
-# Groq models (very fast!)
-GROQ_MODELS = [
-    "llama-3.3-70b-versatile",  # Primary: Best balance of speed & quality (276 T/sec)
-    "llama-3.1-8b-instant",      # Fallback: Ultra-fast for simple tasks
-]
+# Model names live in app/llm_config.py so every call site migrates together
+GROQ_MODELS = MODELS
 
 def get_optimal_timeout(has_job_info: bool, include_recommendations: bool, prompt_length: int) -> int:
     """Calculate optimal timeout based on analysis complexity."""
@@ -206,7 +204,7 @@ Project Relevance:
     return base_prompt
 
 def call_groq_with_rate_limit(prompt: str, analysis_type: str = "basic") -> str:
-    """Call Groq API with proper rate limiting."""
+    """Call Groq API with rate limiting, JSON mode and model fallback."""
     
     global _last_api_call_time
     
@@ -221,47 +219,61 @@ def call_groq_with_rate_limit(prompt: str, analysis_type: str = "basic") -> str:
     include_recommendations = "recommendations" in prompt
     optimal_timeout = get_optimal_timeout(has_job_info, include_recommendations, len(prompt))
     
-    try:
-        print(f"📡 Calling Groq API (timeout: {optimal_timeout}s)...")
-        start_time = time.time()
-        
-        # Initialize Groq client
-        client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
-        
-        # Make the API call
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            model=GROQ_MODELS[0],
-            temperature=0.0,
-            max_tokens=2000,
-        )
-        
-        response_text = chat_completion.choices[0].message.content
-        
-        if response_text:
-            elapsed = time.time() - start_time
-            _last_api_call_time = time.time()
-            print(f"✓ Success in {elapsed:.1f}s")
-            return response_text
+    client = Groq(api_key=os.environ.get('GROQ_API_KEY'), timeout=optimal_timeout)
+    last_error = None
+    
+    for model in GROQ_MODELS:
+        try:
+            print(f"📡 Calling Groq API with {model} (timeout: {optimal_timeout}s)...")
+            start_time = time.time()
             
-    except Exception as e:
-        error_msg = str(e).lower()
-        
-        # Check if it's a rate limit error
-        if "429" in str(e) or "rate limit" in error_msg:
-            raise Exception(
-                "⚠️ Groq API Rate Limit Exceeded\n\n"
-                f"Free tier: 30 req/min, 14,400 req/day\n"
-                "Wait a moment and try again."
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                model=model,
+                temperature=0.0,
+                # Reasoning tokens come out of this budget, so leave headroom
+                max_tokens=4000,
+                reasoning_effort=REASONING_EFFORT,
+                response_format={"type": "json_object"},
             )
+            
+            response_text = chat_completion.choices[0].message.content
+            
+            if response_text and response_text.strip():
+                elapsed = time.time() - start_time
+                _last_api_call_time = time.time()
+                print(f"✓ Success in {elapsed:.1f}s")
+                return response_text
+            
+            # Empty content usually means the reasoning budget was exhausted
+            last_error = Exception(
+                f"{model} returned an empty response "
+                f"(finish_reason: {chat_completion.choices[0].finish_reason})"
+            )
+            print(f"⚠️  {last_error}")
+            
+        except Exception as e:
+            last_error = e
+            error_msg = str(e).lower()
+            
+            # Rate limits will not be fixed by the fallback model
+            if "429" in str(e) or "rate limit" in error_msg:
+                raise Exception(
+                    "⚠️ Groq API Rate Limit Exceeded\n\n"
+                    "Free tier: 30 req/min, 14,400 req/day\n"
+                    "Wait a moment and try again."
+                )
+            
+            print(f"❌ {model} failed: {e}")
         
-        # For other errors, raise immediately
-        raise Exception(f"API call failed: {str(e)}")
+        _last_api_call_time = time.time()
+    
+    raise Exception(f"API call failed on all models ({', '.join(GROQ_MODELS)}): {last_error}")
 
 def parse_groq_response(response_text: str) -> Dict[str, Any]:
     """Parse and validate Groq's JSON response."""
@@ -426,7 +438,10 @@ def test_groq_connection() -> bool:
             messages=[{"role": "user", "content": "Reply with just: 'OK'"}],
             model=GROQ_MODELS[0],
             temperature=0.0,
-            max_tokens=10
+            # Reasoning models spend tokens before emitting content, so a
+            # 10 token budget would always come back empty
+            max_tokens=300,
+            reasoning_effort=REASONING_EFFORT,
         )
         
         response_text = chat_completion.choices[0].message.content
@@ -441,5 +456,3 @@ def test_groq_connection() -> bool:
 
 # Backwards compatibility
 analyze_resume = analyze_resume_with_groq
-analyze_resume_with_cohere = analyze_resume_with_groq
-analyze_resume_with_gemini = analyze_resume_with_groq

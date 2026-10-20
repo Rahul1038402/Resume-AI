@@ -12,6 +12,8 @@ import re
 from groq import Groq
 import time
 
+from app.llm_config import PRIMARY_MODEL, FALLBACK_MODEL, REASONING_EFFORT
+
 logger = logging.getLogger(__name__)
 
 class GmailSyncService:
@@ -299,15 +301,18 @@ Body preview: {email['body'][:500]}
             for attempt in range(max_retries):
                 try:
                     response = self.groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
+                        model=FALLBACK_MODEL,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.1,
-                        max_tokens=10
+                        # Reasoning tokens are billed to max_tokens, so a 10
+                        # token budget would come back empty
+                        max_tokens=512,
+                        reasoning_effort=REASONING_EFFORT,
                     )
                     
                     self.last_ai_call_time = time.time()
                     
-                    result = response.choices[0].message.content.strip().upper()
+                    result = (response.choices[0].message.content or '').strip().upper()
                     is_job_email = 'YES' in result
                     
                     logger.info(f"AI classification: {result}")
@@ -321,6 +326,9 @@ Body preview: {email['body'][:500]}
                         continue
                     else:
                         raise
+            
+            # All retries exhausted without a verdict
+            return True
             
         except Exception as e:
             logger.error(f"AI classification error: {str(e)}")
@@ -422,13 +430,18 @@ Respond ONLY with the JSON object, no additional text.
 """
             
             response = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=PRIMARY_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                max_tokens=500
+                max_tokens=2000,
+                reasoning_effort=REASONING_EFFORT,
+                response_format={"type": "json_object"},
             )
             
-            result_text = response.choices[0].message.content.strip()
+            result_text = (response.choices[0].message.content or '').strip()
+            if not result_text:
+                logger.error("Empty extraction response from model")
+                return None
             
             # Clean up response (remove markdown code blocks if present)
             result_text = result_text.replace('```json', '').replace('```', '').strip()

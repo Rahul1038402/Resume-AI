@@ -15,20 +15,20 @@ export const EducationEditor = ({
     deleteEducation
 }: EducationEditorProps) => {
     return (
-        <div className="space-y-4">
-            <h3 className="text-xl font-medium text-center text-resume-primary dark:text-resume-secondary mb-6">
+        <div className="space-y-2.5">
+            <h3 className="rb-heading mb-3">
                 Education
             </h3>
 
             <button
                 onClick={addEducation}
                 className="w-full px-4 py-2 
-        border-2 border-dotted border-gray-400 
-        dark:border-gray-500
+        border-2 border-dotted border-line-strong 
+        border-line-bright
         rounded-lg 
         flex items-center justify-center gap-2 
-        text-resume-primary dark:text-resume-secondary
-        hover:border-resume-primary dark:hover:border-resume-secondary
+        text-white
+        hover:border-line-bright
         transition-colors
         bg-transparent"
             >
@@ -36,9 +36,9 @@ export const EducationEditor = ({
                 Add Education
             </button>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {education.map((edu) => (
-                    <div key={edu.id} className="p-4 border border-gray-300 dark:border-gray-700 rounded-lg space-y-3">
+                    <div key={edu.id} className="p-4 border border-line rounded-lg space-y-2.5">
                         <div className="flex justify-end">
                             <button
                                 onClick={() => deleteEducation(edu.id)}
@@ -49,88 +49,70 @@ export const EducationEditor = ({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Institution <span className='text-red-600'>*</span></label>
+                            <label className="rb-label">Institution <span className='text-red-400'>*</span></label>
                             <input
                                 type="text"
                                 value={edu.institution}
                                 onChange={(e) => updateEducation(edu.id, 'institution', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="University Name"
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 custom:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Degree <span className='text-red-600'>*</span></label>
+                                <label className="rb-label">Degree <span className='text-red-400'>*</span></label>
                                 <input
                                     type="text"
                                     value={edu.degree}
                                     onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="B.Tech"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">Field of Study <span className='text-red-600'>*</span></label>
+                                <label className="rb-label">Field of Study <span className='text-red-400'>*</span></label>
                                 <input
                                     type="text"
                                     value={edu.field}
                                     onChange={(e) => updateEducation(edu.id, 'field', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="Computer Science"
                                 />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 custom:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Start Date</label>
+                                <label className="rb-label">Start Date</label>
                                 <input
                                     type="text"
                                     value={edu.startDate}
                                     onChange={(e) => updateEducation(edu.id, 'startDate', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="2023"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">End Date <span className='text-red-600'>*</span></label>
+                                <label className="rb-label">End Date <span className='text-red-400'>*</span></label>
                                 <input
                                     type="text"
                                     value={edu.endDate}
                                     onChange={(e) => updateEducation(edu.id, 'endDate', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="2027"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">GPA <span className='text-gray-700 dark:text-gray-400 text-xs'>(Optional)</span></label>
+                                <label className="rb-label">GPA <span className='text-mute text-mute text-xs'>(Optional)</span></label>
                                 <input
                                     type="number"
                                     value={edu.gpa}
                                     onChange={(e) => updateEducation(edu.id, 'gpa', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="8.5/10.0"
                                 />
                             </div>

@@ -21,8 +21,8 @@ const ProjectsEditor = ({
     deleteProjectDescription
 }: ProjectsEditorProps) => {
     return (
-        <div className="space-y-4">
-            <h3 className="text-xl font-medium text-center text-resume-primary dark:text-resume-secondary mb-6">
+        <div className="space-y-2.5">
+            <h3 className="rb-heading mb-3">
                 Projects
             </h3>
 
@@ -30,12 +30,12 @@ const ProjectsEditor = ({
                 onClick={addProject}
                 className="
         w-full px-4 py-2 
-        border-2 border-dotted border-gray-400 
-        dark:border-gray-500
+        border-2 border-dotted border-line-strong 
+        border-line-bright
         rounded-lg 
         flex items-center justify-center gap-2 
-        text-resume-primary dark:text-resume-secondary
-        hover:border-resume-primary dark:hover:border-resume-secondary
+        text-white
+        hover:border-line-bright
         transition-colors
         bg-transparent
     "
@@ -43,9 +43,9 @@ const ProjectsEditor = ({
                 <Plus size={16} />
                 Add Project
             </button>
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {projects.map((project) => (
-                    <div key={project.id} className="p-4 border border-gray-300 dark:border-gray-700 rounded-lg space-y-3">
+                    <div key={project.id} className="p-4 border border-line rounded-lg space-y-2.5">
                         <div className="flex justify-end">
                             <button
                                 onClick={() => deleteProject(project.id)}
@@ -55,53 +55,47 @@ const ProjectsEditor = ({
                             </button>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Project Title <span className='text-red-600'>*</span></label>
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 custom:grid-cols-2">
+                            <div>
+                            <label className="rb-label">Project Title <span className='text-red-400'>*</span></label>
                             <input
                                 type="text"
                                 value={project.title}
                                 onChange={(e) => updateProject(project.id, 'title', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70
-                                focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)]
-                                outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="Project Name"
                             />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Technologies Used <span className='text-red-600'>*</span></label>
+                            </div>
+                            <div>
+                            <label className="rb-label">Technologies Used <span className='text-red-400'>*</span></label>
                             <input
                                 type="text"
                                 value={project.technologies}
                                 onChange={(e) => updateProject(project.id, 'technologies', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                               focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                               focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                               outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="React, Node.js, MongoDB"
                             />
+                            </div>
+
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Project Link</label>
+                            <label className="rb-label">Project Link</label>
                             <input
                                 type="url"
                                 value={project.link}
                                 onChange={(e) => updateProject(project.id, 'link', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                               focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                               focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                               outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="https://github.com/username/project"
                             />
                         </div>
 
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-medium">Description Points</label>
+                                <label className="rb-label mb-0">Description Points</label>
                                 <button
                                     onClick={() => addProjectDescription(project.id)}
-                                    className="text-resume-primary hover:text-resume-primary/80 dark:text-resume-secondary dark:hover:text-resume-secondary/80 flex items-center text-xs"
+                                    className="text-white hover:text-white/80 dark:text-white dark:hover:text-white/80 flex items-center text-xs font-medium"
                                 >
                                     <Plus size={14} />
                                     Add Point
@@ -115,10 +109,7 @@ const ProjectsEditor = ({
                                             type="text"
                                             value={desc}
                                             onChange={(e) => updateProjectDescription(project.id, index, e.target.value)}
-                                            className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                               focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                               focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                               outline-none focus:outline-none transition-all duration-150"
+                                            className="rb-input"
                                             placeholder="Describe what you accomplished..."
                                         />
                                         {project.description.length > 1 && (

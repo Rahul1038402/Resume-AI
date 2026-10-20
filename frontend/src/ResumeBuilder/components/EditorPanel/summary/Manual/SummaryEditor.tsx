@@ -5,24 +5,24 @@ interface SummaryEditorProps {
 
 export const SummaryEditor = ({ summary, updateSummary }: SummaryEditorProps) => {
     return (
-        <div className="space-y-4">
-            <h3 className="text-xl font-medium text-center text-resume-primary dark:text-resume-secondary mb-6">
+        <div className="space-y-2.5">
+            <h3 className="rb-heading mb-3">
                 Professional Summary
             </h3>
 
             <div>
-                <label className="block text-sm font-medium mb-2">Summary <span className='text-red-600'>*</span></label>
+                <label className="rb-label">Summary <span className='text-red-400'>*</span></label>
                 <textarea
                     value={summary}
                     onChange={(e) => updateSummary(e.target.value)}
-                    rows={12}
-                    className="w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black 
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                    rows={10}
+                    /* rb-textarea, not rb-input: the input class carries a
+                       fixed h-8, which silently overrode `rows` and collapsed
+                       this to a single line. */
+                    className="rb-textarea"
                     placeholder="Write a compelling professional summary highlighting your key skills, experience, and career objectives..."
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="mt-1.5 text-[0.7rem] font-medium text-mute">
                     {summary.length} characters
                 </p>
             </div>

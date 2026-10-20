@@ -15,20 +15,20 @@ export const SkillsEditor = ({
     deleteSkillCategory
 }: SkillsEditorProps) => {
     return (
-        <div className="space-y-4">
-            <h3 className="text-xl font-medium text-center text-resume-primary dark:text-resume-secondary mb-6">
+        <div className="space-y-2.5">
+            <h3 className="rb-heading mb-3">
                 Technical Skills
             </h3>
 
             <button
                 onClick={addSkillCategory}
                 className="        w-full px-4 py-2 
-        border-2 border-dotted border-gray-400 
-        dark:border-gray-500
+        border-2 border-dotted border-line-strong 
+        border-line-bright
         rounded-lg 
         flex items-center justify-center gap-2 
-        text-resume-primary dark:text-resume-secondary
-        hover:border-resume-primary dark:hover:border-resume-secondary
+        text-white
+        hover:border-line-bright
         transition-colors
         bg-transparent"
             >
@@ -36,9 +36,9 @@ export const SkillsEditor = ({
                 Add Skill Category
             </button>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5">
                 {skills.categories.map((category) => (
-                    <div key={category.id} className="p-4 border border-gray-300 dark:border-gray-700 rounded-lg space-y-3">
+                    <div key={category.id} className="p-4 border border-line rounded-lg space-y-2.5">
                         <div className="flex justify-end">
                             <button
                                 onClick={() => deleteSkillCategory(category.id)}
@@ -49,29 +49,23 @@ export const SkillsEditor = ({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Category Name</label>
+                            <label className="rb-label">Category Name</label>
                             <input
                                 type="text"
                                 value={category.name}
                                 onChange={(e) => updateSkillCategory(category.id, 'name', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="e.g., Languages"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Skills (comma-separated)</label>
+                            <label className="rb-label">Skills (comma-separated)</label>
                             <input
                                 type="text"
                                 value={category.value}
                                 onChange={(e) => updateSkillCategory(category.id, 'value', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="e.g., JavaScript, Python, Java"
                             />
                         </div>

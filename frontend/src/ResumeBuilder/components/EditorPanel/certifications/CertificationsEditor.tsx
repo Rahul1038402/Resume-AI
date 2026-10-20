@@ -15,20 +15,20 @@ export const CertificationsEditor = ({
     deleteCertification
 }: CertificationsEditorProps) => {
     return (
-        <div className="space-y-4">
-            <h3 className="text-xl font-medium text-center text-resume-primary dark:text-resume-secondary mb-6">
+        <div className="space-y-2.5">
+            <h3 className="rb-heading mb-3">
                 Certifications & Achievements
             </h3>
 
             <button
                 onClick={addCertification}
                 className="        w-full px-4 py-2 
-        border-2 border-dotted border-gray-400 
-        dark:border-gray-500
+        border-2 border-dotted border-line-strong 
+        border-line-bright
         rounded-lg 
         flex items-center justify-center gap-2 
-        text-resume-primary dark:text-resume-secondary
-        hover:border-resume-primary dark:hover:border-resume-secondary
+        text-white
+        hover:border-line-bright
         transition-colors
         bg-transparent"
             >
@@ -36,9 +36,9 @@ export const CertificationsEditor = ({
                 Add Certification
             </button>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {certifications.map((cert) => (
-                    <div key={cert.id} className="p-4 border border-gray-300 dark:border-gray-700 rounded-lg space-y-3">
+                    <div key={cert.id} className="p-4 border border-line rounded-lg space-y-2.5">
                         <div className="flex justify-end">
                             <button
                                 onClick={() => deleteCertification(cert.id)}
@@ -49,73 +49,58 @@ export const CertificationsEditor = ({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Certification Name <span className='text-red-600'>*</span></label>
+                            <label className="rb-label">Certification Name <span className='text-red-400'>*</span></label>
                             <input
                                 type="text"
                                 value={cert.name}
                                 onChange={(e) => updateCertification(cert.id, 'name', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="AWS Certified Developer"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Issuing Organization <span className='text-red-600'>*</span></label>
+                            <label className="rb-label">Issuing Organization <span className='text-red-400'>*</span></label>
                             <input
                                 type="text"
                                 value={cert.issuer}
                                 onChange={(e) => updateCertification(cert.id, 'issuer', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="Amazon Web Services"
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 custom:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Date Issued <span className='text-red-600'>*</span></label>
+                                <label className="rb-label">Date Issued <span className='text-red-400'>*</span></label>
                                 <input
                                     type="text"
                                     value={cert.date}
                                     onChange={(e) => updateCertification(cert.id, 'date', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="Jan 2024"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">Credential ID</label>
+                                <label className="rb-label">Credential ID</label>
                                 <input
                                     type="text"
                                     value={cert.credentialId}
                                     onChange={(e) => updateCertification(cert.id, 'credentialId', e.target.value)}
-                                    className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="rb-input"
                                     placeholder="ABC123XYZ"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Credential URL</label>
+                            <label className="rb-label">Credential URL</label>
                             <input
                                 type="url"
                                 value={cert.link}
                                 onChange={(e) => updateCertification(cert.id, 'link', e.target.value)}
-                                className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                className="rb-input"
                                 placeholder="https://credentials.example.com/..."
                             />
                         </div>

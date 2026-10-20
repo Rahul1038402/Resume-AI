@@ -1,106 +1,67 @@
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect, useRef } from "react";
-import { useInView } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
+import { useEffect, useRef, type FC } from "react";
+import { FadeUp } from "../ui/kit";
 
-interface StatItemProps {
-  key: number;
+/**
+ * A quiet row of numbers, in the shape of the reference's four-up icon strip.
+ *
+ * No cards and no heading: this is a divider between two heavier sections, so
+ * it stays as light as it can while still saying something concrete.
+ */
+type Stat = {
   value: number;
+  unit: string;
   label: string;
-  suffix?: string;
-  duration?: number;
-}
+};
 
-const StatItem = ({ value, label, suffix = "+", duration = 2 }: StatItemProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.5 });
+const Counter: FC<{ value: number; unit: string }> = ({ value, unit }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
   const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => {
-    return Math.round(latest).toLocaleString();
-  });
+  const text = useTransform(count, (v) => Math.round(v).toString());
 
   useEffect(() => {
-    if (isInView) {
-      const controls = animate(count, value, {
-        duration: duration,
-        ease: [0.6, 0.05, 0.01, 0.9]
-      });
-      return controls.stop;
+    if (!inView) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      count.set(value);
+      return;
     }
-  }, [isInView, count, value, duration]);
+
+    const controls = animate(count, value, {
+      duration: 1.1,
+      ease: [0.22, 1, 0.36, 1],
+    });
+    return controls.stop;
+  }, [inView, count, value]);
 
   return (
-    <motion.div
-      ref={ref}
-      className="text-center"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.5 }}
-      transition={{ duration: 0.6, ease: [0.6, 0.05, 0.01, 0.9] }}
-    >
-      <motion.h3 className="text-4xl md:text-5xl lg:text-6xl font-bold text-resume-primary dark:text-resume-secondary mb-3">
-        <motion.span>{rounded}</motion.span>
-        {suffix}
-      </motion.h3>
-      <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg">
-        {label}
-      </p>
-    </motion.div>
+    <span ref={ref} className="flex items-baseline gap-1">
+      <motion.span className="text-3xl font-medium tracking-tight text-white">
+        {text}
+      </motion.span>
+      <span className="text-base text-mute-dim">{unit}</span>
+    </span>
   );
 };
 
+const stats: Stat[] = [
+  { value: 10, unit: "sec", label: "Upload to scored resume" },
+  { value: 5, unit: "min", label: "To build one from scratch" },
+  { value: 3, unit: "tools", label: "Sharing a single document" },
+  { value: 0, unit: "₹", label: "No trial, no card" },
+];
+
 const StatsSection = () => {
-  const stats = [
-    {
-      value: 90,
-      label: "ATS compatibility score achievable",
-      suffix: "%",
-    },
-    {
-      value: 5,
-      label: "Minutes to build a complete resume",
-      suffix: "",
-    },
-    {
-      value: 10,
-      label: "Seconds to get AI feedback",
-      suffix: "",
-      duration: 2,
-    },
-  ];
-
   return (
-    <section className="py-20 relative overflow-hidden">
-      <div
-        className="absolute bottom-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-    dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
-      />
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <motion.div
-          className="max-w-3xl mx-auto text-center mb-16"
-          initial={{ opacity: 0, y: -30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.6, ease: [0.6, 0.05, 0.01, 0.9] }}
-        >
-          <h2 className="text-4xl mb-6 text-resume-primary dark:text-resume-secondary">
-            The Numbers Speak for Themselves
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
-            Every day Resume AI helps job seekers optimize their resumes and land interviews and the numbers keep growing.
-          </p>
-        </motion.div>
-
-        {/* Stats Grid */}
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16">
-          {stats.map((stat, index) => (
-            <StatItem
-              key={index}
-              value={stat.value}
-              label={stat.label}
-              suffix={stat.suffix}
-              duration={stat.duration}
-            />
+    <section data-bg="dark" className="relative px-6 py-16">
+      <div className="mx-auto w-full max-w-6xl border-y border-line py-10">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat, i) => (
+            <FadeUp key={stat.label} delay={i * 0.06}>
+              <Counter value={stat.value} unit={stat.unit} />
+              <p className="mt-2 text-[0.8rem] text-mute-dim">{stat.label}</p>
+            </FadeUp>
           ))}
         </div>
       </div>

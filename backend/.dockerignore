@@ -1,0 +1,18 @@
+# Never bake secrets into the image - pass them at runtime
+# (docker run --env-file .env / compose env_file / Render env vars)
+.env
+.env.*
+
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+.venv/
+venv/
+env/
+
+.git
+.gitignore
+**/*.md
+.vscode/
+.idea/
+*.log

@@ -1,27 +1,4 @@
-FROM python:3.13-slim
-
-# Install system dependencies required by Chromium
-RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    libatspi2.0-0 \
-    libwayland-client0 \
-    libxshmfence1 \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.11.9-slim
 
 WORKDIR /app
 
@@ -29,8 +6,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
-RUN playwright install chromium
+# Install Chromium plus the system libraries it needs. Letting Playwright
+# resolve the packages keeps this working across Debian releases - the old
+# hand-written apt list broke when the base image moved to trixie and
+# libasound2 was renamed libasound2t64.
+RUN playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY . .
@@ -38,5 +19,13 @@ COPY . .
 # Expose port
 EXPOSE 5000
 
-# Run the application
-CMD ["python", "main.py"]
+# Production server. Flask's built-in server (python main.py) is single
+# threaded and not meant for production; the long timeout covers Groq
+# analysis and headless-Chromium PDF rendering.
+CMD ["gunicorn", "main:app", \
+     "--bind", "0.0.0.0:5000", \
+     "--workers", "1", \
+     "--threads", "4", \
+     "--timeout", "180", \
+     "--graceful-timeout", "30", \
+     "--access-logfile", "-"]

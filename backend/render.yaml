@@ -2,8 +2,39 @@ services:
   - type: web
     name: resumeai-backend
     runtime: python
+    plan: free
+    healthCheckPath: /
     buildCommand: |
       pip install -r requirements.txt
       playwright install chromium
       playwright install-deps chromium
-    startCommand: gunicorn main:app
+    # Resume analysis waits on Groq and PDF export drives a headless Chromium,
+    # both of which run well past gunicorn's 30s default and used to 502.
+    # One worker keeps Chromium inside the free tier's memory budget; threads
+    # give concurrency, and the in-process AI rate limiter stays consistent.
+    startCommand: >-
+      gunicorn main:app
+      --bind 0.0.0.0:$PORT
+      --workers 1
+      --threads 4
+      --timeout 180
+      --graceful-timeout 30
+      --access-logfile -
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # Override to migrate models without a code change
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_FALLBACK_MODEL
+        value: openai/gpt-oss-20b

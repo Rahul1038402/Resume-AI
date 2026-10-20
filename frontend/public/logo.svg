@@ -1,51 +1,9 @@
-<svg viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    /* Light mode - bluish shade */
-    .document-bg { fill: #dbeafe; }
-    .document-fold { fill: #93c5fd; }
-    
-    /* Dark mode - white paper */
-    @media (prefers-color-scheme: dark) {
-      .document-bg { fill: #ffffff; }
-      .document-fold { fill: #e5e7eb; }
-    }
-  </style>
-  
-  <!-- Main document shape (full view, no padding) -->
-  <rect class="document-bg" x="0" y="0" width="100" height="150" rx="5"/>
-  
-  <!-- Document lines (resume lines) -->
-  <line x1="12.5" y1="25" x2="62.5" y2="25" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
-  <line x1="12.5" y1="43.75" x2="87.5" y2="43.75" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-  <line x1="12.5" y1="56.25" x2="81.25" y2="56.25" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-  <line x1="12.5" y1="68.75" x2="87.5" y2="68.75" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-  
-  <!-- AI brain/neural network overlay -->
-  <g transform="translate(50, 105)">
-    <!-- Central node -->
-    <circle cx="0" cy="0" r="10" fill="#2563eb"/>
-    
-    <!-- Neural connections -->
-    <line x1="0" y1="0" x2="-25" y2="-18.75" stroke="#2563eb" stroke-width="2.5" opacity="0.8"/>
-    <line x1="0" y1="0" x2="25" y2="-18.75" stroke="#2563eb" stroke-width="2.5" opacity="0.8"/>
-    <line x1="0" y1="0" x2="-18.75" y2="18.75" stroke="#2563eb" stroke-width="2.5" opacity="0.8"/>
-    <line x1="0" y1="0" x2="18.75" y2="18.75" stroke="#2563eb" stroke-width="2.5" opacity="0.8"/>
-    
-    <!-- Outer nodes -->
-    <circle cx="-25" cy="-18.75" r="6.25" fill="#2563eb" opacity="0.9"/>
-    <circle cx="25" cy="-18.75" r="6.25" fill="#2563eb" opacity="0.9"/>
-    <circle cx="-18.75" cy="18.75" r="6.25" fill="#2563eb" opacity="0.9"/>
-    <circle cx="18.75" cy="18.75" r="6.25" fill="#2563eb" opacity="0.9"/>
-    
-    <!-- Smaller connecting nodes -->
-    <circle cx="-37.5" cy="-25" r="3.75" fill="#2563eb" opacity="0.6"/>
-    <circle cx="37.5" cy="-25" r="3.75" fill="#2563eb" opacity="0.6"/>
-    <line x1="-25" y1="-18.75" x2="-37.5" y2="-25" stroke="#2563eb" stroke-width="2" opacity="0.5"/>
-    <line x1="25" y1="-18.75" x2="37.5" y2="-25" stroke="#2563eb" stroke-width="2" opacity="0.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="ResumeAI">
+  <!-- Favicon build: carries its own ground so it holds contrast against a
+       light or a dark browser chrome. The bare mark lives in Logo.tsx. -->
+  <rect width="48" height="48" rx="11" fill="#0A0A0A"/>
+  <g transform="translate(5.35 2.67) scale(0.889)">
+    <path fill="#ffffff" fill-rule="evenodd"
+      d="M9 6h17l7 7v8.5a6.5 6.5 0 0 1-6.5 6.5h-2.2L33 42h-8.4l-8.4-14H16v14H9z M16 13v8h8.5a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"/>
   </g>
-  
-  <!-- Accent corner fold (document detail) -->
-  <path class="document-fold" d="M 87.5 0 L 87.5 12.5 L 100 12.5 Z"/>
-  <line x1="87.5" y1="12.5" x2="100" y2="12.5" stroke="#2563eb" stroke-width="1.25" opacity="0.4"/>
-  <line x1="87.5" y1="0" x2="87.5" y2="12.5" stroke="#2563eb" stroke-width="1.25" opacity="0.4"/>
 </svg>

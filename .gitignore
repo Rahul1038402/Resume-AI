@@ -79,3 +79,5 @@ uploads/
 temp/
 
 StartCMD.md
+# TypeScript incremental build info
+*.tsbuildinfo

@@ -11,12 +11,18 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    visualizer({
-      open: true,
-      filename: 'dist/stats.html',
-      gzipSize: true,
-      brotliSize: true,
-    }),
+    // Bundle report, off by default. It used to run on every build with
+    // open: true, which popped a browser tab on each compile and shipped
+    // dist/stats.html to production. `npm run build:analyze` turns it on -
+    // a --mode flag rather than an env var, because inline env assignment
+    // does not work in the cmd shell npm uses on Windows.
+    mode === 'analyze' &&
+      visualizer({
+        open: true,
+        filename: 'dist/stats.html',
+        gzipSize: true,
+        brotliSize: true,
+      }),
     mode === 'development' && (() => {
       try {
         const { componentTagger } = require("lovable-tagger");

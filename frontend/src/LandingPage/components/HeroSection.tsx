@@ -1,111 +1,70 @@
-import React from 'react'
-import Aurora from '../../components/ui/Aurora'
-import GradientText from '../../components/ui/GradientText'
-import { Button } from '../../components/ui/button'
-import { Link } from 'react-router-dom'
-import ShinyText from '../../components/ui/ShinyText'
-import { motion, Variants } from 'framer-motion'
+import { motion } from "framer-motion";
+import { Badge, Button, Arrow, TwoTone, dim, Sheen } from "../ui/kit";
+import { ResumeBar } from "./ResumeBar";
 
+/**
+ * Hero.
+ *
+ * Centred stack, lit from above: badge, two-tone headline, one line of grey
+ * copy, two buttons, then the object itself. The light sits behind the
+ * headline and again above the bar, so the eye travels down the page along
+ * the lighting rather than along a rule.
+ */
 const HeroSection = () => {
-    const containerVariants: Variants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.2,
-                delayChildren: 0.1,
-            }
-        }
-    }
+  const rise = (delay: number) => ({
+    initial: { opacity: 0, y: 18 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] as const },
+  });
 
-    const itemVariants: Variants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.6,
-                ease: [0.6, 0.05, 0.01, 0.9]
-            }
-        }
-    }
+  return (
+    <section data-bg="dark" className="relative overflow-hidden px-6 pb-20 pt-36">
+      {/* The wash hugs the top edge with a hot spot in each corner, which is
+          where the reference puts its light - not in the middle. */}
+      <Sheen variant="hero-top" />
+      {/* Floor shadow, so the section ends in darkness rather than mid-grey. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-ink"
+      />
 
-    return (
-        <>
-            <div className="h-screen">
-                <div className="h-56">
-                    <Aurora
-                        colorStops={["#7CFF67", "#b19eef", "#5227ff"]}
-                        blend={0.5}
-                        amplitude={2.0}
-                        speed={1.0}
-                    />
-                </div>
-                <div className="relative overflow-hidden">
-                    <motion.div
-                        className="mx-auto px-4 pb-20"
-                        initial="hidden"
-                        animate="visible"
-                        variants={containerVariants}
-                    >
-                        <div className="max-w-3xl mx-auto text-center">
-                            <div className="mb-6 size-full flex flex-col justify-center items-center">
-                                <motion.div variants={itemVariants}>
-                                    <GradientText
-                                        colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
-                                        animationSpeed={11}
-                                        showBorder={false}
-                                        className="text-6xl"
-                                    >
-                                        <p className="mb-5">
-                                            Land Your Dream Job with AI-Powered Resume Tools
-                                        </p>
-                                    </GradientText>
-                                </motion.div>
+      <div className="relative mx-auto w-full max-w-4xl text-center">
+        <motion.div {...rise(0.08)}>
+          <TwoTone
+            as="h1"
+            className="mt-7 text-[2.6rem] leading-[1.08] sm:text-6xl pt-10"
+            parts={["Get past the filter, ", dim("then the human")]}
+          />
+        </motion.div>
 
-                                <motion.p
-                                    className="text-2xl mt-6 mb-10 text-gray-600 dark:text-gray-400 max-w-3xl mx-auto"
-                                    variants={itemVariants}
-                                >
-                                    Build professional resumes in minutes, get AI-powered feedback to optimize them, and track every job application in one dashboard.
-                                </motion.p>
-                            </div>
+        <motion.p
+          className="mx-auto mt-6 max-w-xl text-pretty text-base leading-relaxed text-mute-dim"
+          {...rise(0.16)}
+        >
+          Software reads your resume before a person ever does. Check what it
+          extracts, fix what it misses, and build the next one in a format that
+          parses cleanly.
+        </motion.p>
 
-                            {/* Feature Buttons */}
-                            <motion.div
-                                className="flex flex-col sm:flex-row justify-center gap-4"
-                                variants={itemVariants}
-                            >
-                                <button
-                                    className="dark:bg-transparent rounded-lg border bg-resume-primary hover:bg-resume-primary/90 hover:dark:bg-gray-900/80 dark:border-gray-700 px-4 h-[60px] font-medium cursor-pointer transition-all duration-300"
-                                >
-                                    <Link to="/builder">
-                                        <ShinyText text="Build a Resume" disabled={false} speed={5} className="text-lg" />
-                                    </Link>
-                                </button>
+        <motion.div
+          className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+          {...rise(0.24)}
+        >
+          <Button to="/builder">
+            Build a resume
+            <Arrow />
+          </Button>
+          <Button to="/analyzer" variant="ghost">
+            Open the analyzer
+          </Button>
+        </motion.div>
+      </div>
 
-                                <button
-                                    className="dark:bg-transparent rounded-lg border bg-resume-primary hover:bg-resume-primary/90 hover:dark:bg-gray-900/80 dark:border-gray-700 px-4 h-[60px] font-medium cursor-pointer transition-all duration-300"
-                                >
-                                    <Link to="/analyzer">
-                                        <ShinyText text="Analyze Resume" disabled={false} speed={5} className="text-lg" />
-                                    </Link>
-                                </button>
-
-                                <button
-                                    className="dark:bg-transparent rounded-lg border bg-resume-primary hover:bg-resume-primary/90 hover:dark:bg-gray-900/80 dark:border-gray-700 px-4 h-[60px] font-medium cursor-pointer transition-all duration-300"
-                                >
-                                    <Link to="/tracker">
-                                        <ShinyText text="Track Applications" disabled={false} speed={5} className="text-lg" />
-                                    </Link>
-                                </button>
-                            </motion.div>
-                        </div>
-                    </motion.div>
-                </div>
-            </div>
-        </>
-    )
-}
+      <motion.div className="relative mt-14" {...rise(0.32)}>
+        <ResumeBar />
+      </motion.div>
+    </section>
+  );
+};
 
 export default HeroSection;

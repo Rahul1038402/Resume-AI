@@ -1,41 +1,29 @@
 import Layout from "@/components/common/Layout";
-import NumberedFeatureCards from "./components/CardComponents";
-import PainPointsSection from "./components/PainPointsSection";
-import HeroSection from "@/LandingPage/components/HeroSection";
-import StatsSection from "@/LandingPage/components/StatsSection";
-import WhyResumeAISection from "@/LandingPage/components/WhyResumeAISection";
-import CTASection from "@/LandingPage/components/CTASection";
-import FAQSection from "@/LandingPage/components/FAQSection";
-import ProductShowcaseSection from "./components/ProductShowcaseSection";
+import HeroSection from "./components/HeroSection";
+import BentoSection from "./components/BentoSection";
+import HowItWorks from "./components/HowItWorks";
+import StatsSection from "./components/StatsSection";
+import FAQSection from "./components/FAQSection";
+import CTASection from "./components/CTASection";
 
+/**
+ * Landing page.
+ *
+ * One dark ground throughout, lit from above in the hero and from below in
+ * the closing call to action. No section paints its own background: depth
+ * comes from the cards and the lighting, not from alternating blocks.
+ */
 const Index = () => {
   return (
     <Layout>
-      {/* Hero Section with improved CTA hierarchy */}
-      <section className="overflow-hidden">
+      <div className="bg-ink">
         <HeroSection />
-      </section>
-
-      {/* Problem/Solution comparison */}
-      <PainPointsSection />
-
-      {/* Why Choose ResumeAI */}
-      <WhyResumeAISection />
-
-      <ProductShowcaseSection />
-
-      {/* How it works - step by step */}
-      <NumberedFeatureCards />
-
-      {/* Social proof with stats */}
-      <StatsSection />
-
-      {/* FAQ Section */}
-      <FAQSection />
-
-      {/* CTA Section */}
-      <CTASection />
-
+        <BentoSection />
+        <HowItWorks />
+        <StatsSection />
+        <FAQSection />
+        <CTASection />
+      </div>
     </Layout>
   );
 };

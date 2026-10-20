@@ -56,16 +56,16 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-purple-900/80 to-pink-900/80 border border-purple-700/50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="rounded-xl border border-line bg-ink-card p-4 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="text-purple-200 dark:text-purple-300" size={20} />
-          <h3 className="font-semibold text-purple-200 dark:text-purple-300">AI Suggestion</h3>
+          <Sparkles className="text-white" size={20} />
+          <h3 className="text-sm font-medium text-white">AI Suggestion</h3>
         </div>
         <button
           onClick={() => setIsEditing(!isEditing)}
-          className="flex justify-center items-center gap-2 p-2 text-gray-200 dark:text-gray-400 hover:text-white dark:hover:text-gray-300 rounded-lg transition-colors"
+          className="flex justify-center items-center gap-2 p-2 text-neutral-200 text-mute hover:text-white dark:hover:text-mute rounded-lg transition-colors"
           title={isEditing ? "Preview" : "Edit"}
         >
           <Edit2 size={16} />
@@ -74,10 +74,10 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
       </div>
 
       {/* Content */}
-      <div className="space-y-4 mb-6">
-        <label className="text-xs text-gray-300 dark:text-gray-400 mb-2 block">Skill Categories</label>
+      <div className="space-y-4 mb-4">
+        <label className="text-xs text-mute text-mute mb-2 block font-medium">Skill Categories</label>
         
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {editedSkills.map((category, index) => (
             <div key={index} className="space-y-2">
               {isEditing ? (
@@ -88,14 +88,14 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
                         type="text"
                         value={category.name}
                         onChange={(e) => updateCategory(index, 'name', e.target.value)}
-                        className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-purple-500 text-sm"
+                        className="rb-input"
                         placeholder="Category name (e.g., Languages)"
                       />
                       <input
                         type="text"
                         value={category.value}
                         onChange={(e) => updateCategory(index, 'value', e.target.value)}
-                        className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-purple-500 text-sm"
+                        className="rb-input"
                         placeholder="Skills (comma-separated)"
                       />
                     </div>
@@ -112,8 +112,8 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
               ) : (
                 <div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-purple-300 font-medium text-sm">{category.name}:</span>
-                    <span className="text-gray-300 text-sm">{category.value}</span>
+                    <span className="text-[0.8rem] font-medium text-white">{category.name}:</span>
+                    <span className="text-mute text-sm">{category.value}</span>
                   </div>
                 </div>
               )}
@@ -125,7 +125,7 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
         {isEditing && (
           <button
             onClick={addCategory}
-            className="w-full mt-3 px-3 py-2 border-2 border-dotted border-gray-600 hover:border-purple-500 rounded-lg flex items-center justify-center gap-2 text-gray-400 hover:text-purple-300 transition-colors text-sm"
+            className="w-full mt-3 px-3 py-2 border-2 border-dotted border-line-strong hover:border-line-bright rounded-lg flex items-center justify-center gap-2 text-mute hover:text-white transition-colors text-sm"
           >
             <Plus size={16} />
             Add Category
@@ -135,23 +135,23 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
 
       {/* Quick Refinement Buttons */}
       {onRefine && !isEditing && (
-        <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-700">
-          <span className="text-xs text-gray-300 dark:text-gray-400 w-full mb-1">Quick refinements:</span>
+        <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-line">
+          <span className="text-xs text-mute text-mute w-full mb-1 font-medium">Quick refinements:</span>
           <button
             onClick={() => onRefine('add_categories')}
-            className="text-xs px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full transition-colors"
+            className="rb-chip"
           >
             ➕ Add Categories
           </button>
           <button
             onClick={() => onRefine('match_jd')}
-            className="text-xs px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full transition-colors"
+            className="rb-chip"
           >
-            🎯 Match to JD
+            Match to JD
           </button>
           <button
             onClick={() => onRefine('prioritize')}
-            className="text-xs px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full transition-colors"
+            className="rb-chip"
           >
             ⭐ Prioritize
           </button>
@@ -162,14 +162,14 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
       <div className="flex gap-3">
         <button
           onClick={handleAccept}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition-colors"
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90"
         >
           <Check size={18} />
           Add to Resume
         </button>
         <button
           onClick={onReject}
-          className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-3 bg-ink-raised hover:bg-white/[0.10] text-white rounded-lg transition-colors"
         >
           <X size={18} />
           Reject
@@ -177,8 +177,8 @@ export const AISkillsSuggestionCard: React.FC<AISkillsSuggestionCardProps> = ({
       </div>
 
       {/* Tip */}
-      <p className="text-xs text-gray-300 dark:text-gray-400 mt-4 text-center">
-        💡 Review and edit categories before adding to your resume
+      <p className="text-xs text-mute text-mute mt-4 text-center font-medium">
+        Review and edit categories before adding to your resume
       </p>
     </div>
   );

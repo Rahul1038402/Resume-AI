@@ -103,7 +103,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* AI Mode Toggle */}
             <AIModeToggle
                 mode={mode}
@@ -113,7 +113,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
 
             {/* AI Mode Interface */}
             {isAIMode && (
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <AIChatInterface
                         messages={messages}
                         isLoading={isLoading}

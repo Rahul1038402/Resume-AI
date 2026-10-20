@@ -101,17 +101,31 @@ export const useAIAssistant = ({ section, resumeContext, sessionId = 'default' }
       let assistantMessage = '';
       const assistantMsgId = (Date.now() + 1).toString();
       let isSuggestionResponse = false;
+      // SSE events can split across network chunks; parse only whole lines so
+      // a half-received event no longer throws and kills the stream
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        // Keep the trailing partial line for the next chunk
+        buffer = lines.pop() ?? '';
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
+            const payload = line.slice(6).trim();
+            if (!payload) continue;
+
+            let data;
+            try {
+              data = JSON.parse(payload);
+            } catch {
+              console.warn('Skipping malformed SSE payload:', payload.slice(0, 120));
+              continue;
+            }
 
             if (data.type === 'content') {
               assistantMessage += data.data;

@@ -95,7 +95,7 @@ const SummarySection: React.FC<SummarySectionProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* AI Mode Toggle */}
       <AIModeToggle
         mode={mode}
@@ -105,7 +105,7 @@ const SummarySection: React.FC<SummarySectionProps> = ({
 
       {/* AI Mode Interface */}
       {isAIMode && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <AIChatInterface
             messages={messages}
             isLoading={isLoading}

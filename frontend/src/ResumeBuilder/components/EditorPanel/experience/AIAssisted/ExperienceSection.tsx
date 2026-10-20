@@ -8,7 +8,6 @@ import { useConversationHistory } from '../../../../hooks/useConversationHistory
 import { ParsedExperience } from '../../../AIAssistant/types';
 import { AIExperienceSuggestionCard } from '../../../AIAssistant/AIExperienceSuggestionCard';
 import { ExperienceEditor } from '../Manual/ExperienceEditor';
-import { a } from 'node_modules/framer-motion/dist/types.d-DagZKalS';
 
 interface ExperienceSectionProps {
   resumeData: ResumeData;
@@ -31,16 +30,6 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
   updateExperienceAchievement,
   deleteExperienceAchievement
 }) => {
-  // Safety check
-  if (!resumeData) {
-    console.error('ExperienceSection: resumeData is undefined');
-    return (
-      <div className="p-6 bg-red-900/20 border border-red-700 rounded-lg">
-        <p className="text-red-300">Error: Resume data not loaded</p>
-      </div>
-    );
-  }
-
   // AI Mode State
   const { mode, isAIMode, showWelcome, toggleMode, dismissWelcome } = useAIMode({
     section: 'experience',
@@ -121,8 +110,19 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
     sendMessage(refinementPrompts[refinementType] || refinementPrompts.quantify);
   };
 
+  // Safety check. Placed after the hooks: an early return above them would
+  // change the hook order between renders and crash React.
+  if (!resumeData) {
+    console.error('ExperienceSection: resumeData is undefined');
+    return (
+      <div className="p-6 bg-red-900/20 border border-red-700 rounded-lg">
+        <p className="text-red-300">Error: Resume data not loaded</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* AI Mode Toggle */}
       <AIModeToggle
         mode={mode}
@@ -132,7 +132,7 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 
       {/* AI Mode Interface */}
       {isAIMode && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <AIChatInterface
             messages={messages}
             isLoading={isLoading}

@@ -72,7 +72,7 @@ const EditorPanel = ({
     deleteCertification
 }: EditorPanelProps) => {
     return (
-        <div className="bg-white dark:bg-black rounded-lg shadow-lg p-6 overflow-y-auto h-full custom:max-h-[calc(100vh-200px)] w-full custom:w-[500pt] max-w-full">
+        <div className="h-full w-full max-w-full overflow-y-auto">
 
             {/* Section Content */}
             {activeSection === 'personal' && (

@@ -1,5 +1,4 @@
 import { User, Briefcase, GraduationCap, Award, Code, FolderOpen, NotebookPen } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { ActiveSection } from '../types';
 
 interface SectionNavigationProps {
@@ -7,33 +6,48 @@ interface SectionNavigationProps {
     setActiveSection: (section: ActiveSection) => void;
 }
 
+const sections = [
+    { id: 'personal', icon: User, label: 'Personal' },
+    { id: 'summary', icon: NotebookPen, label: 'Summary' },
+    { id: 'skills', icon: Code, label: 'Skills' },
+    { id: 'projects', icon: FolderOpen, label: 'Projects' },
+    { id: 'experience', icon: Briefcase, label: 'Experience' },
+    { id: 'education', icon: GraduationCap, label: 'Education' },
+    { id: 'certifications', icon: Award, label: 'Certifications' },
+] as const;
+
+/**
+ * Which part of the resume you are filling in.
+ *
+ * Sits directly above the editor column rather than spanning the page, so it
+ * reads as belonging to the form it drives rather than to the whole screen.
+ *
+ * Wraps rather than scrolls sideways: seven chips do not fit a 560px column,
+ * and a sideways scroller hid the last two entirely with no affordance that
+ * they existed.
+ */
 export const SectionNavigation = ({ activeSection, setActiveSection }: SectionNavigationProps) => {
-    const sections = [
-        { id: 'personal', icon: User, label: 'Personal' },
-        { id: 'summary', icon: NotebookPen, label: 'Summary' },
-        { id: 'skills', icon: Code, label: 'Skills' },
-        { id: 'projects', icon: FolderOpen, label: 'Projects' },
-        { id: 'experience', icon: Briefcase, label: 'Experience' },
-        { id: 'education', icon: GraduationCap, label: 'Education' },
-        { id: 'certifications', icon: Award, label: 'Certifications' }
-    ];
     return (
-        <div className="flex flex-wrap justify-center items-center gap-2 py-4 border-b border-gray-200 dark:border-gray-700">
-            {sections.map(({ id, icon: Icon, label }) => (
-                <button
-                    key={id}
-                    onClick={() => setActiveSection(id as ActiveSection)}
-                    className={cn(
-                        "px-3 py-2 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-all duration-200",
-                        activeSection === id
-                            ? "text-black dark:text-white dark:hover:bg-gray-900 border-2 dark:border-gray-400 shadow-md"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-black dark:text-gray-300 dark:hover:bg-gray-900 border dark:border-gray-700"
-                    )}
-                >
-                    <Icon size={16} />
-                    {label}
-                </button>
-            ))}
+        <div className="mb-2.5 flex flex-wrap gap-1.5">
+            {sections.map(({ id, icon: Icon, label }) => {
+                const on = activeSection === id;
+                return (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={() => setActiveSection(id as ActiveSection)}
+                        aria-pressed={on}
+                        className={`flex shrink-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-[0.8rem] transition-colors duration-200 ${
+                            on
+                                ? 'border-line-bright bg-white/10 text-white'
+                                : 'border-line text-mute hover:border-line-strong hover:text-white'
+                        }`}
+                    >
+                        <Icon size={15} strokeWidth={1.6} />
+                        {label}
+                    </button>
+                );
+            })}
         </div>
     );
-}
+};

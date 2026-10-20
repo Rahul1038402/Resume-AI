@@ -1,5 +1,4 @@
 import { Download, Edit3, Settings, Loader2, RotateCcw } from 'lucide-react';
-import ShinyText from '@/components/ui/ShinyText';
 import { ActiveTab } from '../types';
 
 interface TopControlsProps {
@@ -10,6 +9,22 @@ interface TopControlsProps {
     isDownloading: boolean;
     downloadProgress: number;
 }
+
+/**
+ * The builder's one toolbar: what you are editing on the left, what you can do
+ * with it on the right.
+ *
+ * Sticky beneath the floating nav rather than scrolling under it - the old
+ * version used `top-16` without `sticky`, so the Layout tab and the download
+ * button slid behind the nav pill as soon as the page moved.
+ *
+ * Opaque, not frosted: the resume preview behind it is a sheet of white
+ * paper, and at 90% the page read straight through as grey. Glass only works
+ * when what is behind it is dark.
+ *
+ * Download is the white button because it is the point of the page. Reset is
+ * the only red thing here, and only on hover: it throws away everything typed.
+ */
 export const TopControls = ({
     activeTab,
     setActiveTab,
@@ -18,76 +33,74 @@ export const TopControls = ({
     isDownloading,
     downloadProgress,
 }: TopControlsProps) => {
+    const tab = (id: ActiveTab, label: string, Icon: typeof Edit3) => (
+        <button
+            type="button"
+            onClick={() => setActiveTab(id)}
+            aria-pressed={activeTab === id}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-[0.8rem] transition-colors duration-200 ${
+                activeTab === id
+                    ? 'bg-white/10 text-white'
+                    : 'text-mute hover:text-white'
+            }`}
+        >
+            <Icon size={15} strokeWidth={1.6} />
+            {label}
+        </button>
+    );
+
     return (
-        <div className="bg-transparent top-16 z-30">
-            <div className="relative overflow-hidden container mx-auto px-4 pb-5">
-                                  <div
-        className="absolute shadow-lg bottom-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-    dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
-      />
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    {/* Left: Tab Buttons */}
-                    <div className="flex gap-2 flex-wrap justify-center">
-                        <button
-                            onClick={() => setActiveTab("editor")}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors duration-200 ${activeTab === "editor" ? "text-black dark:text-white dark:hover:bg-gray-900 border-2 dark:border-gray-400 shadow-md"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-black dark:text-gray-300 dark:hover:bg-gray-900 border dark:border-gray-700"}`}
-                        >
-                            <Edit3 size={16} />
-                            Editor
-                        </button>                    
-                        <button
-                            onClick={() => setActiveTab("layout")}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors duration-200 ${activeTab === "layout"
-                                ? "text-black dark:text-white dark:hover:bg-gray-900 border-2 dark:border-gray-400 shadow-md"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-black dark:text-gray-300 dark:hover:bg-gray-900 border dark:border-gray-700"
-                                }`}
-                        >
-                            <Settings size={16} />
-                            Layout
-                        </button>
-                    </div>
-                    {/* Right: Action Buttons */}
-                    <div className="flex gap-2 flex-wrap justify-center">
-                        <button
-                            onClick={handleDownload}
-                            disabled={isDownloading}
-                            className="relative px-4 py-2 text-sm font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 transition-colors duration-200 overflow-hidden disabled:opacity-80"
-                        >
-                            {/* Progress bar background */}
-                            <div
-                                className="absolute inset-0 bg-green-800 transition-all duration-300 ease-out"
-                                style={{
-                                    width: `${downloadProgress}%`,
-                                    left: 0
-                                }}
+        <div className="sticky top-[88px] z-30 border-b border-line bg-ink">
+            <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+                {/* What you are editing */}
+                <div className="flex items-center gap-1 rounded-lg border border-line p-0.5">
+                    {tab('editor', 'Editor', Edit3)}
+                    {tab('layout', 'Layout', Settings)}
+                </div>
+
+                {/* What you can do with it */}
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={resetAllData}
+                        disabled={isDownloading}
+                        className="flex items-center gap-2 rounded-md border border-line px-3 py-1.5 text-[0.8rem] text-mute transition-colors duration-200 hover:border-red-500/40 hover:text-red-400 disabled:opacity-40"
+                    >
+                        <RotateCcw size={15} strokeWidth={1.6} />
+                        Reset
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        className="relative flex items-center gap-2 overflow-hidden rounded-md bg-white px-3.5 py-1.5 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90 disabled:opacity-80"
+                    >
+                        {/* Progress fills the button from the left as the PDF renders. */}
+                        {isDownloading && (
+                            <span
+                                aria-hidden="true"
+                                className="absolute inset-y-0 left-0 bg-ink/15 transition-all duration-300 ease-out"
+                                style={{ width: `${downloadProgress}%` }}
                             />
-                            {/* Button content */}
-                            <span className="relative z-10 flex items-center gap-2">
-                                {isDownloading ? (
-                                    <>
-                                        <Loader2 size={16} className="animate-spin" />
-                                        <span>Downloading... {downloadProgress}%</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Download size={16} />
-                                        Download PDF
-                                    </>
-                                )}
-                            </span>
-                        </button>                    
-                        <button
-                            onClick={resetAllData}
-                            disabled={isDownloading}
-                            className="px-4 py-2 text-sm font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 transition-colors duration-200 disabled:opacity-50"
-                        >
-                            <RotateCcw size={16} />
-                            Reset
-                        </button>
-                    </div>
+                        )}
+
+                        <span className="relative z-10 flex items-center gap-2">
+                            {isDownloading ? (
+                                <>
+                                    <Loader2 size={15} className="animate-spin" />
+                                    Downloading {downloadProgress}%
+                                </>
+                            ) : (
+                                <>
+                                    <Download size={15} strokeWidth={1.8} />
+                                    Download PDF
+                                </>
+                            )}
+                        </span>
+                    </button>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };

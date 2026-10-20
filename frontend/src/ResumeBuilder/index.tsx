@@ -11,7 +11,6 @@ import { useResumeValidation } from './hooks/useResumeValidation';
 import { ActiveTab, ActiveSection } from './types';
 import { generateResumePDF } from '@/ResumeAnalyzer/api/resumeService';
 import '../index.css';
-import Loader from '@/components/common/Loader';
 import { SectionNavigation } from './components/SectionNavigation';
 
 const STORAGE_KEY_LAST_SAVED = 'lastSaved';
@@ -81,16 +80,6 @@ function ResumeBuilder() {
     const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [isPageLoading, setIsPageLoading] = useState(true);
-
-    // Handle initial page load
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsPageLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, []);
 
     // Load last saved timestamp on mount
     useEffect(() => {
@@ -174,17 +163,11 @@ function ResumeBuilder() {
         }
     };
 
-    // Early return for loading state
-    if (isPageLoading) {
-        return (
-            <Loader />
-        );
-    }
-
     return (
         <>
             <Header />
-            <div className="flex flex-col pt-28">
+            {/* pt-24 clears the floating nav; the toolbar below sticks under it. */}
+            <div className="min-h-screen bg-ink pt-24">
                 {/* Top Controls */}
                 <TopControls
                     activeTab={activeTab}
@@ -195,15 +178,21 @@ function ResumeBuilder() {
                     downloadProgress={downloadProgress}
                 />
 
-                {/* Main Content Area */}
-                <div className="flex-1">
-                    <SectionNavigation
-                        activeSection={activeSection}
-                        setActiveSection={setActiveSection}
-                    />
+                {/* Main content. One container, one set of gutters, so the
+                    toolbar, the chips and both columns share an edge. */}
+                <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 sm:px-6">
+                    <div className="flex flex-col items-start justify-center gap-4 custom:flex-row">
+                        {/* Left column: the section chips sit directly above
+                            the form they drive, rather than spanning the page. */}
+                        <div className="flex w-full min-w-0 flex-col custom:h-[calc(100vh-212px)] custom:max-w-[880px] custom:flex-1">
+                            {activeTab === 'editor' && (
+                                <SectionNavigation
+                                    activeSection={activeSection}
+                                    setActiveSection={setActiveSection}
+                                />
+                            )}
 
-                    <div className="flex flex-col custom:flex-row justify-center items-start gap-4 pb-4 px-4 pt-2">
-                        {/* Left Panel: Editor OR Layout */}
+                            <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-line bg-ink-soft p-4">
                         {activeTab === 'editor' && (
                             <EditorPanel
                                 activeSection={activeSection}
@@ -243,6 +232,8 @@ function ResumeBuilder() {
                                 updateMargin={updateMargin}
                             />
                         )}
+                            </div>
+                        </div>
 
                         {/* Right Panel: Preview (always visible) */}
                         <PreviewPanel

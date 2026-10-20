@@ -15,34 +15,70 @@ ai_bp = Blueprint('ai_assistant', __name__, url_prefix='/api/ai-assist')
 # Initialize AI service
 ai_service = AIService()
 
-# Rate limiting storage
+# Rate limiting storage (in-process; keyed by caller IP, not by a
+# client-supplied session id that resets on every page load)
 user_request_counts = {}
+
+# Session totals, keyed by caller alone. These deliberately do NOT live in
+# user_request_counts: that dict is keyed "<client>:<section>", so a session
+# counter stored there could never climb past SECTION_LIMIT and the session
+# cap was unreachable - seven sections meant 7 x 15 calls per client per day.
+user_session_counts = {}
 
 # Rate limit constants
 SECTION_LIMIT = 15
 SESSION_LIMIT = 50
 RESET_HOURS = 24
+MAX_TRACKED_KEYS = 5000
 
-def check_rate_limit(session_id: str, section: str) -> tuple[bool, dict]:
+def get_client_key() -> str:
+    """Identify the caller for rate limiting.
+
+    Prefers the real client IP behind Render/Vercel proxies. The session_id
+    posted by the browser is not trusted: it is regenerated on every mount,
+    which made the limits trivially resettable by reloading the page.
+    """
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+def prune_expired_counts(current_time) -> None:
+    """Drop expired buckets so the dict cannot grow without bound."""
+    for store in (user_request_counts, user_session_counts):
+        expired = [
+            key for key, counts in store.items()
+            if current_time - counts['last_reset'] > timedelta(hours=RESET_HOURS)
+        ]
+        for key in expired:
+            del store[key]
+
+        # Hard cap as a backstop against many short-lived clients
+        if len(store) > MAX_TRACKED_KEYS:
+            oldest = sorted(store.items(), key=lambda kv: kv[1]['last_reset'])
+            for key, _ in oldest[:len(store) - MAX_TRACKED_KEYS]:
+                del store[key]
+
+def get_bucket(store: dict, key: str, field: str, current_time):
+    """Fetch a counter bucket, creating it or rolling it over as needed."""
+    bucket = store.get(key)
+    if bucket is None:
+        bucket = store[key] = {field: 0, 'last_reset': current_time}
+    elif current_time - bucket['last_reset'] > timedelta(hours=RESET_HOURS):
+        bucket[field] = 0
+        bucket['last_reset'] = current_time
+    return bucket
+
+def check_rate_limit(section: str) -> tuple[bool, dict]:
     """Check rate limits"""
-    key = f"{session_id}:{section}"
+    client = get_client_key()
+    key = f"{client}:{section}"
     current_time = datetime.now()
     
-    if key not in user_request_counts:
-        user_request_counts[key] = {
-            'section': 0,
-            'session': 0,
-            'last_reset': current_time
-        }
+    prune_expired_counts(current_time)
     
-    counts = user_request_counts[key]
-    
-    # Reset after 24 hours
-    time_since_reset = current_time - counts['last_reset']
-    if time_since_reset > timedelta(hours=RESET_HOURS):
-        counts['section'] = 0
-        counts['session'] = 0
-        counts['last_reset'] = current_time
+    counts = get_bucket(user_request_counts, key, 'section', current_time)
+    totals = get_bucket(user_session_counts, client, 'session', current_time)
     
     # Check limits
     if counts['section'] >= SECTION_LIMIT:
@@ -50,10 +86,10 @@ def check_rate_limit(session_id: str, section: str) -> tuple[bool, dict]:
             'error': f'Section limit reached ({SECTION_LIMIT} requests)',
             'limit_type': 'section',
             'remaining_section': 0,
-            'remaining_session': max(0, SESSION_LIMIT - counts['session'])
+            'remaining_session': max(0, SESSION_LIMIT - totals['session'])
         }
     
-    if counts['session'] >= SESSION_LIMIT:
+    if totals['session'] >= SESSION_LIMIT:
         return False, {
             'error': f'Session limit reached ({SESSION_LIMIT} requests)',
             'limit_type': 'session',
@@ -63,11 +99,11 @@ def check_rate_limit(session_id: str, section: str) -> tuple[bool, dict]:
     
     # Increment
     counts['section'] += 1
-    counts['session'] += 1
+    totals['session'] += 1
     
     return True, {
         'remaining_section': max(0, SECTION_LIMIT - counts['section']),
-        'remaining_session': max(0, SESSION_LIMIT - counts['session'])
+        'remaining_session': max(0, SESSION_LIMIT - totals['session'])
     }
 
 def stream_ai_response(messages, prompt_class, section):
@@ -75,10 +111,7 @@ def stream_ai_response(messages, prompt_class, section):
     def generate():
         try:
             # Send rate limit first
-            allowed, limit_info = check_rate_limit(
-                request.json.get('session_id', 'default'),
-                section
-            )
+            allowed, limit_info = check_rate_limit(section)
             
             if not allowed:
                 yield f"data: {json.dumps({'type': 'error', 'data': limit_info['error']})}\n\n"
@@ -250,13 +283,37 @@ def assist_experience():
 def reset_limits():
     """Reset rate limits"""
     try:
-        data = request.get_json()
-        session_id = data.get('session_id', 'default')
+        data = request.get_json(silent=True) or {}
         section = data.get('section', 'projects')
         
-        key = f"{session_id}:{section}"
-        if key in user_request_counts:
-            del user_request_counts[key]
+        client = get_client_key()
+        key = f"{client}:{section}"
+        counts = user_request_counts.get(key)
+        session_used = user_session_counts.get(client, {}).get('session', 0)
+        
+        if not counts:
+            return jsonify({
+                'success': True,
+                'new_limits': {
+                    'remaining_section': SECTION_LIMIT,
+                    'remaining_session': SESSION_LIMIT
+                }
+            })
+        
+        # Only honour a reset once the 24h window has actually elapsed,
+        # otherwise this endpoint is just a limiter bypass.
+        if datetime.now() - counts['last_reset'] <= timedelta(hours=RESET_HOURS):
+            return jsonify({
+                'success': False,
+                'error': 'Limits reset automatically 24 hours after first use',
+                'new_limits': {
+                    'remaining_section': max(0, SECTION_LIMIT - counts['section']),
+                    'remaining_session': max(0, SESSION_LIMIT - session_used)
+                }
+            }), 429
+        
+        del user_request_counts[key]
+        user_session_counts.pop(client, None)
         
         return jsonify({
             'success': True,

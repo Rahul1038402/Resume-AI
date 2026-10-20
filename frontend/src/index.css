@@ -87,8 +87,9 @@ html {
   }
 
   body {
+    /* font-sans resolves to Satoshi (see tailwind.config.ts). The hard-coded
+       Inter that used to sit here overrode it on every page. */
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', sans-serif;
   }
 }
 
@@ -101,15 +102,16 @@ html {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-800;
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-600 rounded;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-500;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .animate-pulse-slow {
@@ -360,34 +362,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-/* For Webkit browsers (Chrome, Safari, Edge) */
-.dark ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #1f2937;
-  /* dark gray */
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  /* lighter gray */
-  border-radius: 6px;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-  /* even lighter on hover */
-}
-
-/* For Firefox */
-.dark * {
-  scrollbar-width: thin;
-  scrollbar-color: #4b5563 #1f2937;
-  /* thumb color, track color */
-}
+/* Scrollbar styling lives at the end of this file. */
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -408,8 +383,9 @@ input[type="number"]::-webkit-outer-spin-button {
 /* Dark mode */
 .dark input[type="number"]::-webkit-inner-spin-button,
 .dark input[type="number"]::-webkit-outer-spin-button {
-  background-color: #1f2937;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230D9488'><path d='M7 10l5-5 5 5H7zm0 4l5 5 5-5H7z'/></svg>");
+  /* Neutral arrows. The teal here was the last of the old accent palette. */
+  background-color: #1A1A1A;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238A8A8A'><path d='M7 10l5-5 5 5H7zm0 4l5 5 5-5H7z'/></svg>");
 
 }
 
@@ -442,4 +418,96 @@ input[type="number"]::-webkit-outer-spin-button {
   100% {
     background-position: 0% 0%;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Resume builder controls
+   ---------------------------------------------------------------------------
+   The editors repeated a 5-line Tailwind string on every input, which is why
+   they drifted from the rest of the app. One definition here, referenced by
+   name, keeps them in step with the monochrome theme.
+
+   Red survives in exactly two places: a destructive action and a validation
+   error. Everything else is greyscale.
+--------------------------------------------------------------------------- */
+@layer components {
+  .rb-label {
+    @apply block text-[0.7rem] font-medium text-mute mb-1;
+  }
+
+  .rb-input,
+  .rb-textarea {
+    @apply w-full rounded-md border border-line-strong bg-ink-soft px-2.5 text-[0.8rem] text-white
+           placeholder:text-mute-faint transition-colors duration-200
+           hover:border-line-bright focus:border-white/40 focus:outline-none;
+  }
+
+  .rb-input {
+    @apply h-8;
+  }
+
+  .rb-textarea {
+    @apply py-2 leading-snug;
+  }
+
+  /* A grouped item: one project, one role, one qualification. */
+  .rb-card {
+    @apply rounded-lg border border-line bg-ink-card p-3;
+  }
+
+  /* The heading above each editor section. */
+  .rb-heading {
+    @apply text-sm font-medium text-white;
+  }
+
+  /* Small secondary control: add a bullet, delete a row. */
+  .rb-chip {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1
+           text-[0.7rem] font-medium text-mute transition-colors duration-200
+           hover:border-line-strong hover:text-white;
+  }
+
+  /* Destructive: kept red on purpose. */
+  .rb-chip-danger {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-red-500/30 px-2.5 py-1
+           text-[0.7rem] font-medium text-red-400 transition-colors duration-200
+           hover:border-red-500/60 hover:text-red-300;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars
+   ---------------------------------------------------------------------------
+   Thin, neutral and track-less, so a scrolling panel does not put a pale grey
+   slab down the edge of a black interface. `background-clip: padding-box`
+   with a transparent border is what insets the thumb from the edge.
+--------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

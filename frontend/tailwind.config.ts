@@ -30,8 +30,8 @@ export default {
 
     extend: {
       fontFamily: {
-        inter: ["Inter", "sans-serif"],
-        sans: ["Inter", "sans-serif"],
+        inter: ["Satoshi", "Inter", "sans-serif"],
+        sans: ["Satoshi", "Inter", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -76,6 +76,28 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        // Monochrome only. White is the accent - the filled pill button is
+        // the brightest thing on the page and nothing competes with it. A
+        // hue anywhere here breaks the studio-lighting effect.
+        ink: {
+          // True black. Sampling the reference shows its dark areas are
+          // literally #000; the sheens are what lift the page, and on an
+          // off-black ground they read as grey smudges instead of light.
+          DEFAULT: "#000000",
+          soft: "#0E0E0E",
+          card: "#131313",
+          raised: "#1A1A1A",
+        },
+        line: {
+          DEFAULT: "rgba(255,255,255,0.07)",
+          strong: "rgba(255,255,255,0.12)",
+          bright: "rgba(255,255,255,0.22)",
+        },
+        mute: {
+          DEFAULT: "#8A8A8A",
+          dim: "#6A6A6A",
+          faint: "#4A4A4A",
         },
         resume: {
           primary: "#2563eb",

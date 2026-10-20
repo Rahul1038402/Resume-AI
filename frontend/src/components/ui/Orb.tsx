@@ -105,9 +105,9 @@ export default function Orb({
       return vec4(colorIn.rgb / (a + 1e-5), a);
     }
     
-    const vec3 baseColor1 = vec3(0.611765, 0.262745, 0.996078);
-    const vec3 baseColor2 = vec3(0.298039, 0.760784, 0.913725);
-    const vec3 baseColor3 = vec3(0.062745, 0.078431, 0.600000);
+    const vec3 baseColor1 = vec3(0.880, 0.885, 0.900); // bright chrome highlight
+    const vec3 baseColor2 = vec3(0.320, 0.330, 0.360); // mid steel gray
+    const vec3 baseColor3 = vec3(0.055, 0.055, 0.065); // deep charcoal
     const float innerRadius = 0.6;
     const float noiseScale = 0.65;
     
@@ -120,35 +120,75 @@ export default function Orb({
     }
     
     vec4 draw(vec2 uv) {
-      vec3 color1 = adjustHue(baseColor1, hue);
-      vec3 color2 = adjustHue(baseColor2, hue);
-      vec3 color3 = adjustHue(baseColor3, hue);
+      vec3 color1 = baseColor1;
+      vec3 color2 = baseColor2;
+      vec3 color3 = baseColor3;
       
-      float ang = atan(uv.y, uv.x);
       float len = length(uv);
       float invLen = len > 0.0 ? 1.0 / len : 0.0;
-      
-      float n0 = snoise3(vec3(uv * noiseScale, iTime * 0.5)) * 0.5 + 0.5;
+      vec2 uvDir = uv * invLen;
+
+      // --- Noise field ---
+      float n0 = snoise3(vec3(uv * noiseScale, iTime * 0.3)) * 0.5 + 0.5;
+      float n1 = snoise3(vec3(uv * 1.2 + 4.0, iTime * 0.2)) * 0.5 + 0.5;
+      float n2 = snoise3(vec3(uv * 2.0 - 3.0, iTime * 0.25 + 8.0)) * 0.5 + 0.5;
+
+      // --- All angular mixing via dot product (no atan2, no seam) ---
+      float cl  = dot(uvDir, vec2(cos(iTime * 0.4),  sin(iTime * 0.4)))  * 0.5 + 0.5;
+      float cl2 = dot(uvDir, vec2(cos(iTime * 0.3),  sin(iTime * 0.3)))  * 0.5 + 0.5;
+      float cl2n = clamp(cl2 + (n1 - 0.5) * 0.3, 0.0, 1.0);
+      float cl3 = dot(uvDir, vec2(-sin(iTime * 0.2), cos(iTime * 0.2)))  * 0.5 + 0.5;
+
+      // --- Ring boundary ---
       float r0 = mix(mix(innerRadius, 1.0, 0.4), mix(innerRadius, 1.0, 0.6), n0);
       float d0 = distance(uv, (r0 * invLen) * uv);
+
+      // --- Edge ring ---
       float v0 = light1(1.0, 10.0, d0);
       v0 *= smoothstep(r0 * 1.05, r0, len);
-      float cl = cos(ang + iTime * 2.0) * 0.5 + 0.5;
-      
-      float a = iTime * -1.0;
-      vec2 pos = vec2(cos(a), sin(a)) * r0;
+
+      float a = iTime * -0.25;
+      vec2 pos = vec2(cos(a), sin(a)) * r0 * 0.65;
       float d = distance(uv, pos);
-      float v1 = light2(1.5, 5.0, d);
-      v1 *= light1(1.0, 50.0, d0);
-      
+      float v1 = light2(1.2, 20.0, d);
+      v1 *= light1(1.0, 40.0, d0);
+
       float v2 = smoothstep(1.0, mix(innerRadius, 1.0, n0 * 0.5), len);
       float v3 = smoothstep(innerRadius, mix(innerRadius, 1.0, 0.5), len);
-      
-      vec3 col = mix(color1, color2, cl);
-      col = mix(color3, col, v0);
-      col = (col + v1) * v2 * v3;
-      col = clamp(col, 0.0, 1.0);
-      
+
+      vec3 edgeCol = mix(color2, color1, cl * v0 + v0 * 0.5);
+      edgeCol = mix(color3, edgeCol, v0);
+      edgeCol = (edgeCol + color1 * v1) * v2 * v3;
+
+      // --- Interior fill ---
+      vec3 fillCol = mix(color3, color2, cl2n * 0.45);
+      fillCol = mix(fillCol, color3, cl3 * 0.5);
+
+      float noiseIntensity = n0 * 0.4 + n1 * 0.35 + n2 * 0.25;
+
+      vec2 spec2pos = vec2(cos(a + 2.1), sin(a + 2.1)) * r0 * 0.55;
+      vec2 spec3pos = vec2(cos(a - 1.5), sin(a - 1.5)) * r0 * 0.35;
+      float fillSpec1 = light2(1.8, 18.0, distance(uv, pos * 0.45));
+      float fillSpec2 = light2(1.2, 22.0, distance(uv, spec2pos));
+      float fillSpec3 = light2(0.8, 30.0, distance(uv, spec3pos));
+
+      vec3 fill = fillCol * (0.25 + 0.2 * noiseIntensity);
+      fill += color1 * fillSpec1 * 0.55;
+      fill += color1 * fillSpec2 * 0.35;
+      fill += color2 * fillSpec3 * 0.25;
+
+      float caustic = smoothstep(0.62, 0.88, noiseIntensity);
+      fill += color2 * caustic * 0.18;
+
+      float coreDensity = smoothstep(0.75, 0.0, len) * 0.15;
+      fill += color2 * coreDensity;
+
+      fill *= smoothstep(0.95, 0.75, len);
+
+      // --- Combine ---
+      vec3 col = clamp(fill + edgeCol, 0.0, 1.0);
+      col *= smoothstep(0.98, 0.92, len);
+
       return extractAlpha(col);
     }
     

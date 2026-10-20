@@ -1,97 +1,109 @@
 import { Link } from "react-router-dom";
-import Orb from '@/components/ui/Orb';
-import { Logo } from "./Logo";
-import { Twitter, Linkedin, Github } from 'lucide-react';
+import { Twitter, Linkedin, Github } from "lucide-react";
+
+/**
+ * Footer.
+ *
+ * Ends the page the way the reference does: the links and the legal line
+ * first, then the wordmark set enormous along the bottom edge, clipped by the
+ * viewport so it reads as a signature rather than as a heading.
+ *
+ * The wordmark is drawn in a near-black that sits only a few steps above the
+ * ground, so it registers as texture until you look straight at it.
+ */
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { label: "Resume builder", to: "/builder" },
+      { label: "ATS analyzer", to: "/analyzer" },
+      { label: "Application tracker", to: "/tracker" },
+    ],
+  },
+  {
+    title: "About",
+    links: [
+      { label: "About ResumeAI", to: "/about" },
+      { label: "About me", to: "/aboutme" },
+    ],
+  },
+];
+
+const socials = [
+  { Icon: Twitter, href: "https://x.com/Rahul_Kr_Mall", label: "Twitter" },
+  { Icon: Linkedin, href: "https://www.linkedin.com/in/rahul-kr-mall", label: "LinkedIn" },
+  { Icon: Github, href: "https://github.com/Rahul1038402", label: "GitHub" },
+];
 
 const Footer = () => {
-  const socialLinks = [
-    { icon: Twitter, href: "https://x.com/Rahul_Kr_Mall", label: "Twitter" },
-    { icon: Linkedin, href: "https://www.linkedin.com/in/rahul-kr-mall", label: "LinkedIn" },
-    { icon: Github, href: "https://github.com/Rahul1038402", label: "GitHub" }
-  ];
   return (
-    <>
-      {/* Footer Navigation */}
-      <div className="relative w-full border-t border-gray-300 dark:border-gray-700 bg-gradient-to-t from-white/95 via-white/70 to-white/0 dark:from-black/95 dark:via-black/70 dark:to-black/0 backdrop-blur-sm">
-        <div className="flex flex-col justify-center items-center container mx-auto px-4 pb-8 relative pt-6">
-            <div className="flex items-center gap-2">
-              <Link to="/" className="flex items-center gap-2 relative z-50">
-                <Logo className="w-8 h-8 sm:w-10 sm:h-10" />
-                <span className="text-3xl text-resume-primary dark:text-resume-secondary">
-                  ResumeAI
-                </span>
-              </Link>
-            </div>
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-12 mb-12 relative pb-12">
-            <div className='w-fit h-fit backdrop-blur-md'>
-              <h4 className="font-semibold text-xl text-resume-primary dark:text-resume-secondary mb-10">Features</h4>
-              <ul className="space-y-6">
-                <li>
-                  <Link to="/builder" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">Resume Builder</Link>
-                </li>
-                <li>
-                  <Link to="/analyzer" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">Resume Analyzer</Link>
-                </li>
-                <li>
-                  <Link to="/tracker" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">Job Tracker</Link>
-                </li>
-              </ul>
-            </div>
+    <footer className="relative overflow-hidden border-t border-line bg-ink px-6 pt-20">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-2">
+            <p className="max-w-xs text-pretty text-sm leading-relaxed text-mute-dim">
+              Free tools for getting a resume past applicant tracking systems —
+              built, scored and tracked in one place.
+            </p>
 
-            <div className='w-fit h-fit backdrop-blur-md'>
-              <h4 className="font-semibold text-xl text-resume-primary dark:text-resume-secondary mb-10">About Us</h4>
-              <ul className="space-y-6">
-                <li>
-                  <Link to="/about" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">About Resume AI</Link>
+            <ul className="mt-6 flex gap-2">
+              {socials.map(({ Icon, href, label }) => (
+                <li key={label}>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-mute transition-colors duration-200 hover:border-line-strong hover:text-white"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </a>
                 </li>
-                <li>
-                  <Link to="/aboutme" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">About Me</Link>
-                </li>
-                <li>
-                  <Link to="/terms" className="text-gray-600 hover:text-resume-primary dark:text-gray-300 dark:hover:text-white transition-colors">Terms of Service</Link>
-                </li>
-              </ul>
-            </div>
-            <Orb
-              hoverIntensity={0.75}
-              rotateOnHover={true}
-              hue={10}
-              forceHoverState={false}
-            />
-            {/* Gradient Border Bottom */}
-            <div
-              className="absolute bottom-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-    dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
-            />
-          </div>
-
-          <div className="flex flex-col justify-between items-center w-full gap-6">
-            {/* Copyright Section */}
-            <div className="w-full">
-              <div className="text-center text-gray-600 dark:text-gray-400 text-sm">
-                <p>&copy; {new Date().getFullYear()} ResumeAI. All rights reserved.</p>
-              </div>
-            </div>
-
-            {/* Social Icons */}
-            <div className="flex gap-4">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 flex items-center justify-center hover:text-gray-500 rounded-lg transition-colors duration-300"
-                  aria-label={social.label}
-                >
-                  <social.icon className="w-5 h-5" />
-                </a>
               ))}
-            </div>
+            </ul>
           </div>
+
+          {columns.map((column) => (
+            <div key={column.title}>
+              <h3 className="text-[0.7rem] uppercase tracking-[0.18em] text-mute-faint">
+                {column.title}
+              </h3>
+              <ul className="mt-4 space-y-2.5">
+                {column.links.map((link) => (
+                  <li key={link.to}>
+                    <Link
+                      to={link.to}
+                      className="text-sm text-mute transition-colors duration-200 hover:text-white"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-16 flex flex-col items-start justify-between gap-3 border-t border-line py-6 sm:flex-row sm:items-center">
+          <p className="text-xs text-mute-faint">
+            © {new Date().getFullYear()} ResumeAI. All rights reserved.
+          </p>
+          <a
+            href="mailto:rahul1038402@gmail.com"
+            className="text-xs text-mute-faint transition-colors hover:text-white"
+          >
+            rahul1038402@gmail.com
+          </a>
         </div>
       </div>
-    </>
+
+      {/* The signature. Clipped at the bottom edge on purpose. */}
+      <div aria-hidden="true" className="relative mx-auto max-w-7xl select-none">
+        <span className="block translate-y-[0.16em] text-center text-[20vw] font-bold leading-[0.8] tracking-[-0.04em] text-white/[0.05]">
+          ResumeAI
+        </span>
+      </div>
+    </footer>
   );
 };
 

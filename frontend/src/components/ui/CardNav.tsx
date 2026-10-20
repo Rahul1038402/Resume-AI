@@ -1,32 +1,11 @@
 
 import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { gsap } from 'gsap';
-import { ArrowUpRight, Moon, Sun, LogOut, NotepadText } from 'lucide-react';
+import { ArrowUpRight, LogOut, NotepadText } from 'lucide-react';
 import { supabase } from "@/lib/supabaseClient";
 import { Link } from 'react-router-dom';
 import GradientText from './GradientText';
 import { Logo } from '../common/Logo';
-
-const useTheme = () => {
-    const [theme, setTheme] = useState(() => {
-        // Check localStorage or system preference
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('theme');
-            if (stored) return stored;
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        return 'light';
-    });
-
-    useEffect(() => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    return { theme, setTheme };
-};
 
 type CardNavLink = {
     label: string;
@@ -65,7 +44,6 @@ const CardNav: React.FC<CardNavProps> = ({
     const [isExpanded, setIsExpanded] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
-    const { theme, setTheme } = useTheme();
 
     const navRef = useRef<HTMLDivElement | null>(null);
     const cardsRef = useRef<HTMLDivElement[]>([]);
@@ -256,7 +234,7 @@ const CardNav: React.FC<CardNavProps> = ({
         >
             <nav
                 ref={navRef}
-                className={`card-nav border dark:border-gray-700 block h-[60px] p-0 rounded-3xl shadow-md bg-white/50 dark:bg-black/50
+                className={`card-nav border border-white/10 block h-[60px] p-0 rounded-3xl shadow-md bg-ground/85
                     backdrop-blur-md relative overflow-hidden will-change-[height] transition-colors duration-300
                         ${isExpanded ? "open" : ""}`}>
                 <div className="card-nav-top absolute inset-x-0 top-0 h-[60px] flex items-center justify-between p-2 pl-[1.1rem] z-[2]">
@@ -284,20 +262,6 @@ const CardNav: React.FC<CardNavProps> = ({
                                 />
                             </div>
                         )}
-                        {/* Theme Toggle */}
-                        <button
-                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                            aria-label="Toggle theme"
-                            type="button"
-                        >
-                            {theme === "dark" ? (
-                                <Sun className="w-5 h-5 text-yellow-300" />
-                            ) : (
-                                <Moon className="w-5 h-5 text-blue-900" />
-                            )}
-                        </button>
-
                         {/* Hamburger Menu */}
                         <div
                             className={`hamburger-menu ${isHamburgerOpen ? "open" : ""} group h-full flex flex-col items-center justify-center cursor-pointer gap-[6px]`}

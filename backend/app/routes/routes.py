@@ -372,6 +372,20 @@ def generate_pdf():
                     padding: 0;
                     box-sizing: border-box;
                 }}
+
+                /* The margins belong to the page, not to a box inside it.
+                   
+                   They used to be padding on the single div the client sends.
+                   Padding applies once to a block, so the moment a resume ran
+                   past one page the second page started hard against the top
+                   edge and ran off the bottom - there was no bottom margin on
+                   any page but the first, because there was only ever one
+                   bottom padding. @page is applied by Chrome to every sheet it
+                   produces, so every page now gets all four. */
+                @page {{
+                    size: {page_size};
+                    margin: {margin_top} {margin_right} {margin_bottom} {margin_left};
+                }}
                 
                 body {{
                     font-family: {font_family};
@@ -419,15 +433,57 @@ def generate_pdf():
                     color: #000000 !important;
                 }}
 
-                /* The client sends the page box itself, which carries the page
-                   size, the margins as padding, and the chosen font size, line
-                   height and family as inline styles. Nothing here should
-                   contest them - the PDF is meant to be a render of the
-                   preview, not a rebuild of it. Page margins are therefore 0
-                   below, or the margins would be applied a second time. */
-                body {{
-                    display: flex;
-                    justify-content: center;
+                /* The client still sends the page box, because it carries the
+                   font size, line height and family the user chose, and the
+                   PDF is meant to be a render of the preview rather than a
+                   rebuild of it. What it must NOT keep is its own geometry:
+                   the fixed page width and height and the margins-as-padding
+                   would be counted a second time on top of @page above. */
+                #resume-preview {{
+                    width: auto !important;
+                    height: auto !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    overflow: visible !important;
+                    box-shadow: none !important;
+                }}
+
+                .resume-content {{
+                    height: auto !important;
+                    min-height: 0 !important;
+                }}
+
+                /* Where the preview decided a page ends. The frontend measures
+                   the laid-out blocks and marks the ones that start a page, so
+                   the PDF breaks in exactly the places the preview drew them
+                   rather than wherever Chrome would have chosen on its own. */
+                [data-page-break="true"] {{
+                    break-before: page !important;
+                    page-break-before: always !important;
+                }}
+
+                /* Never split a section that would fit whole.
+                   
+                   The explicit markers above come from measuring the preview,
+                   and a measurement can be a pixel out. Without this, being a
+                   pixel out put a section heading at the foot of one page and
+                   its only entry at the top of the next.
+
+                   The frontend marks the pieces it treated as units, which is
+                   not always a whole section: a Projects section taller than a
+                   page is split between its projects, and marking the section
+                   itself would forbid the very break the preview drew. */
+                [data-no-split="true"] {{
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }}
+
+                /* And never strand a heading at the foot of a page. */
+                h1, h2, h3, h4 {{
+                    break-after: avoid;
+                    page-break-after: avoid;
                 }}
             </style>
         </head>
@@ -460,11 +516,11 @@ def generate_pdf():
             # logger.info(f"Screenshot size: {len(screenshot)} bytes")
             
             logger.info("Generating PDF")
+            # prefer_css_page_size hands size and margins to the @page rule
+            # above. Passing them here as well would apply them twice.
             pdf_bytes = page.pdf(
-                format=page_size,
                 print_background=True,
-                margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'},
-                prefer_css_page_size=False
+                prefer_css_page_size=True
             )
             
             browser.close()

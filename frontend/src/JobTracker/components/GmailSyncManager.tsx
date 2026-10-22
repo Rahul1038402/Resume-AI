@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Mail, RefreshCw, CheckCircle, XCircle, AlertCircle, Clock, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { planImport, describePlan } from '../importPlan';
+import type { ExtractedApplication, ExistingApplication } from '../importPlan';
 
 interface SyncMetadata {
     gmail_credentials: any;
@@ -10,19 +12,6 @@ interface SyncMetadata {
     auto_sync_frequency_hours: number;
     total_synced_count: number;
     last_sync_status: string | null;
-}
-
-interface ExtractedApplication {
-    company_name: string;
-    job_title: string;
-    application_date: string;
-    status: string;
-    platform: string;
-    notes: string;
-    email_message_id: string;
-    email_subject: string;
-    email_sender: string;
-    confidence: string;
 }
 
 interface GmailSyncManagerProps {
@@ -38,12 +27,16 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
     const [syncMetadata, setSyncMetadata] = useState<SyncMetadata | null>(null);
     const [pendingApplications, setPendingApplications] = useState<ExtractedApplication[]>([]);
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [boardRows, setBoardRows] = useState<ExistingApplication[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [syncStatus, setSyncStatus] = useState<string>('');
     const [syncProgress, setSyncProgress] = useState<string>('');
     const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
     const [scanDays, setScanDays] = useState(7);
+    const [needsReauth, setNeedsReauth] = useState(false);
+    const [unreadable, setUnreadable] = useState<{ subject: string; sender: string }[]>([]);
 
     useEffect(() => {
         if (!user) return;
@@ -61,7 +54,7 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
                 .from('gmail_sync_metadata')
                 .select('*')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!error && data) {
                 setIsConnected(true);
@@ -80,7 +73,7 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
                 .from('gmail_sync_metadata')
                 .select('sync_enabled, last_sync_time, auto_sync_frequency_hours')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (data?.sync_enabled) {
                 const hoursSinceSync = data.last_sync_time
@@ -99,9 +92,20 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
 
     const connectGmail = async () => {
         try {
-            await supabase.auth.signOut();
+            setNeedsReauth(false);
+            setUnreadable([]);
 
-            const { data, error } = await supabase.auth.signInWithOAuth({
+            /*
+             * No signOut first.
+             *
+             * This used to sign the user out of the app before starting the
+             * OAuth round trip, which meant pressing Reconnect logged you out
+             * and left the tracker empty until Google redirected back. It was
+             * presumably there to force a fresh consent screen, but
+             * `prompt: 'consent'` already does that, and `access_type:
+             * 'offline'` is what actually guarantees the refresh token.
+             */
+            const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: window.location.origin,
@@ -115,7 +119,7 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
 
             if (error) throw error;
         } catch (error: any) {
-            alert('Failed to connect Gmail: ' + error.message);
+            setSyncStatus('Could not start Google sign-in: ' + error.message);
         }
     };
 
@@ -143,14 +147,41 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
         return () => subscription.unsubscribe();
     }, [user]);
 
-    const saveGmailCredentials = async (session: any) => {
-        try {
-            console.log('=== Saving Credentials ===');
+    /*
+     * Store the Google tokens against the user.
+     *
+     * Two things went wrong here before.
+     *
+     * First, two code paths race. Returning from the OAuth round trip fires
+     * `handleOAuthCallback` on mount *and* an onAuthStateChange SIGNED_IN,
+     * and both called this. Each did a delete followed by an insert, so the
+     * pair interleaved - both deleted, then both inserted - and the second
+     * insert hit `gmail_sync_metadata_user_id_key`. Hence the
+     * "duplicate key value violates unique constraint" alert on connecting.
+     *
+     * Second, and worse, the delete threw away the whole row: the imported
+     * count, the last sync time, and `cached_message_ids`. So reconnecting
+     * reset the panel to "0 imported" and, with the id cache gone, the next
+     * sync rescanned and re-imported mail it had already seen. The row is now
+     * updated in place and keeps everything that is not a credential.
+     */
+    const savingRef = useRef(false);
 
-            if (!session.provider_refresh_token) {
-                alert('No refresh token received. Please try disconnecting and reconnecting Gmail.');
+    const saveGmailCredentials = async (session: any) => {
+        // Whichever path gets here first does the work; the other returns.
+        if (savingRef.current) return;
+        savingRef.current = true;
+
+        try {
+            if (!session?.provider_refresh_token) {
+                setSyncStatus('Google did not return a refresh token. Try connecting again.');
                 return;
             }
+
+            // The session is the authority on who just signed in; the `user`
+            // prop can still be the previous value at this point.
+            const uid = session.user?.id || user?.id;
+            if (!uid) return;
 
             const credentials = {
                 token: session.provider_token,
@@ -160,36 +191,56 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
                 token_type: 'Bearer'
             };
 
-            await supabase
+            const { data: existing } = await supabase
                 .from('gmail_sync_metadata')
-                .delete()
-                .eq('user_id', user.id);
+                .select('id')
+                .eq('user_id', uid)
+                .maybeSingle();
 
-            const { data, error } = await supabase
-                .from('gmail_sync_metadata')
-                .insert({
-                    user_id: user.id,
-                    gmail_credentials: credentials,
-                    sync_enabled: true,
-                    auto_sync_frequency_hours: 6
-                })
-                .select()
-                .single();
+            let error;
+            if (existing) {
+                // Credentials only. The sync history is not ours to reset.
+                ({ error } = await supabase
+                    .from('gmail_sync_metadata')
+                    .update({ gmail_credentials: credentials, sync_enabled: true })
+                    .eq('user_id', uid));
+            } else {
+                ({ error } = await supabase
+                    .from('gmail_sync_metadata')
+                    .insert({
+                        user_id: uid,
+                        gmail_credentials: credentials,
+                        sync_enabled: true,
+                        auto_sync_frequency_hours: 6
+                    }));
+
+                // Another tab inserted between the check and the insert.
+                // The row exists and is the one we wanted, so update it.
+                if (error?.code === '23505') {
+                    ({ error } = await supabase
+                        .from('gmail_sync_metadata')
+                        .update({ gmail_credentials: credentials, sync_enabled: true })
+                        .eq('user_id', uid));
+                }
+            }
 
             if (error) throw error;
 
-            console.log('✅ Saved to database');
             setIsConnected(true);
+            setNeedsReauth(false);
+            setSyncStatus('Gmail connected');
             await checkGmailConnection();
         } catch (error: any) {
             console.error('Error saving credentials:', error);
-            alert('Failed to save Gmail credentials: ' + error.message);
+            setSyncStatus('Could not save Gmail credentials: ' + error.message);
+        } finally {
+            savingRef.current = false;
         }
     };
 
     const handleSync = async (isAutoSync: boolean = false) => {
         if (!syncMetadata) {
-            alert('Please connect Gmail first');
+            setSyncStatus('Connect Gmail first');
             return;
         }
 
@@ -214,21 +265,44 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
                 })
             });
 
-            console.log('Response status:', response.status);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             setSyncProgress('Analyzing emails with AI...');
 
-            const result = await response.json();
-            console.log('=== Sync Result ===', result);
+            const result = await response.json().catch(() => null);
 
-            if (result.status === 'error') {
+            if (response.status === 429) {
+                const resets = result?.rate_limit?.resets_at
+                    ? ` Try again after ${new Date(result.rate_limit.resets_at).toLocaleTimeString()}.`
+                    : '';
+                setSyncStatus(`Daily sync limit reached.${resets}`);
+                setSyncProgress('');
+                return;
+            }
+
+            if (!response.ok && !result) {
+                throw new Error(`Sync failed (HTTP ${response.status})`);
+            }
+
+            /*
+             * Not a failure, a state the user has to resolve.
+             *
+             * gmail.readonly is a restricted scope, so while the OAuth consent
+             * screen sits in Testing the refresh token Google issues expires
+             * after seven days. It used to surface as "Sync failed:
+             * invalid_grant", which reads like a bug and gives no hint that
+             * the fix is one button away.
+             */
+            if (result?.status === 'reauth_required') {
+                setNeedsReauth(true);
+                setSyncStatus(result.error || 'Gmail access expired. Reconnect to keep syncing.');
+                setSyncProgress('');
+                return;
+            }
+
+            if (result?.status === 'error') {
                 throw new Error(result.error);
             }
 
+            setNeedsReauth(false);
             setSyncProgress('Updating sync metadata...');
 
             await supabase
@@ -251,70 +325,142 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
                     extracted_count: result.extracted_count
                 });
 
-            if (result.status === 'no_changes') {
-                setSyncStatus(`✓ No new applications found (checked ${result.checked_count} emails)`);
-                setSyncProgress('');
-                setLastSyncTime(new Date().toISOString());
-            } else if (result.new_applications.length > 0) {
+            setLastSyncTime(new Date().toISOString());
+            setSyncProgress('');
+
+            setUnreadable(result.unreadable || []);
+
+            if (result.new_applications?.length > 0) {
                 setPendingApplications(result.new_applications);
                 if (!isAutoSync) {
+                    // The board is needed to tell "new card" from "moves an
+                    // existing one", which is what the review list reports.
+                    const { data: rows } = await supabase
+                        .from('job_applications')
+                        .select('id, company, job_role, status, email_message_id')
+                        .eq('user_id', user.id);
+
+                    const board = rows || [];
+                    setBoardRows(board);
+
+                    // Everything that would change something starts ticked;
+                    // duplicates and no-ops start clear, so the default action
+                    // is the one the user almost always wants.
+                    const preview = planImport(result.new_applications, board);
+                    setSelectedIds(
+                        result.new_applications
+                            .filter((a: ExtractedApplication) =>
+                                preview.decisions[a.email_message_id]?.action !== 'skip')
+                            .map((a: ExtractedApplication) => a.email_message_id)
+                    );
                     setShowReviewModal(true);
+                    setSyncStatus(`Found ${result.new_applications.length} to review`);
                 } else {
                     await importApplications(result.new_applications);
                 }
-                setSyncStatus(`✓ Found ${result.new_applications.length} new applications`);
-                setSyncProgress('');
-                setLastSyncTime(new Date().toISOString());
+            } else {
+                setSyncStatus(`No new applications (checked ${result.checked_count} emails)`);
             }
 
             await checkGmailConnection();
         } catch (error: any) {
             console.error('=== Sync Error ===', error);
-            setSyncStatus('✗ Sync failed: ' + error.message);
+            setSyncStatus('Sync failed: ' + error.message);
             setSyncProgress('');
-            alert('Sync failed: ' + error.message);
         } finally {
-            console.log('=== Sync Complete ===');
             setIsSyncing(false);
         }
     };
 
+    /*
+     * Import, or advance what is already there.
+     *
+     * The decision itself lives in ./importPlan so it can be tested without a
+     * database; this only carries it out.
+     */
     const importApplications = async (applications: ExtractedApplication[]) => {
         try {
-            const applicationsToInsert = applications.map(app => ({
-                user_id: user.id,
-                job_role: app.job_title,
-                company: app.company_name,
-                platform: app.platform,
-                date_applied: app.application_date,
-                status: app.status,
-                description: app.notes || '',
-                email_message_id: app.email_message_id,
-                email_subject: app.email_subject,
-                email_sender: app.email_sender,
-                auto_imported: true
-            }));
-
-            const { error } = await supabase
+            const { data: existing, error: fetchError } = await supabase
                 .from('job_applications')
-                .insert(applicationsToInsert);
+                .select('id, company, job_role, status, email_message_id')
+                .eq('user_id', user.id);
 
-            if (error) throw error;
+            if (fetchError) throw fetchError;
+
+            const plan = planImport(applications, existing || []);
+
+            if (plan.insert.length) {
+                /*
+                 * Upsert, not insert.
+                 *
+                 * There is a unique index on (user_id, email_message_id), so
+                 * one already-imported email does not add a duplicate row -
+                 * it fails the whole statement, and every other application in
+                 * the batch is lost with it. The planner filters duplicates it
+                 * can see, but it reads the board a moment earlier, so a
+                 * second tab or a concurrent auto-sync can still collide.
+                 * Ignoring the conflict keeps the rest of the batch.
+                 */
+                const { error } = await supabase.from('job_applications').upsert(
+                    plan.insert.map(app => ({
+                        user_id: user.id,
+                        job_role: app.job_title,
+                        company: app.company_name,
+                        platform: app.platform,
+                        date_applied: app.application_date,
+                        status: app.status,
+                        description: app.notes || '',
+                        email_message_id: app.email_message_id,
+                        email_subject: app.email_subject,
+                        email_sender: app.email_sender,
+                        auto_imported: true,
+                    })),
+                    { onConflict: 'user_id,email_message_id', ignoreDuplicates: true }
+                );
+                if (error) throw error;
+            }
+
+            for (const { id, status } of plan.advance) {
+                const { error } = await supabase
+                    .from('job_applications')
+                    .update({ status })
+                    .eq('id', id);
+                if (error) throw error;
+            }
 
             setPendingApplications([]);
             setShowReviewModal(false);
             onApplicationsImported();
-
-            alert(`Successfully imported ${applications.length} applications!`);
+            setSyncStatus(describePlan(plan));
         } catch (error: any) {
             console.error('Import error:', error);
-            alert('Failed to import applications: ' + error.message);
+            setSyncStatus('Import failed: ' + error.message);
         }
     };
 
-    const removeFromPending = (index: number) => {
-        setPendingApplications(prev => prev.filter((_, i) => i !== index));
+    /*
+     * What this sync would do, recomputed as the selection changes.
+     *
+     * The planner is pure, so the same function that performs the import can
+     * describe it first - the review list and the result can never disagree
+     * about whether something is a new card or a move.
+     */
+    const preview = useMemo(
+        () => planImport(pendingApplications, boardRows),
+        [pendingApplications, boardRows],
+    );
+
+    const STATUS_LABEL: Record<string, string> = {
+        applied: 'Applied',
+        in_progress: 'In Progress',
+        got_offer: 'Got Offer',
+        not_selected: 'Not Selected',
     };
+
+    const toggleSelected = (id: string) =>
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
 
     const disconnectGmail = async () => {
         if (confirm('Are you sure you want to disconnect Gmail?')) {
@@ -328,7 +474,7 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
                 setSyncMetadata(null);
                 setLastSyncTime(null);
             } catch (error: any) {
-                alert('Failed to disconnect: ' + error.message);
+                setSyncStatus('Could not disconnect: ' + error.message);
             }
         }
     };
@@ -344,235 +490,275 @@ const GmailSyncManager = ({ user, onApplicationsImported }: GmailSyncManagerProp
             setAutoSyncEnabled(newValue);
             await checkGmailConnection();
         } catch (error: any) {
-            alert('Failed to update settings: ' + error.message);
+            setSyncStatus('Could not update settings: ' + error.message);
         }
     };
 
     return (
-        <div className="bg-card rounded-lg p-6 shadow-sm border border-border mb-6">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <Mail className="w-6 h-6 text-resume-primary dark:text-resume-secondary" />
-                            <h3 className="text-lg font-semibold text-foreground">Gmail Auto-Sync</h3>
-                        </div>
-                        <p className="pl-9 text-sm text-muted-foreground">
-                            Automatically track applications from your email
-                        </p>
-                    </div>
+        <div className="rounded-xl border border-line bg-ink-card px-4 py-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Mail className="h-4 w-4 shrink-0 text-mute" strokeWidth={1.6} />
+                <span className="text-[0.85rem] text-white">Gmail auto-sync</span>
+
+                {isConnected ? (
+                    <span className="flex items-center gap-1.5 text-[0.75rem] font-medium text-mute-dim">
+                        <span className={`h-1.5 w-1.5 rounded-full ${needsReauth ? 'bg-red-400/80' : 'bg-white/70'}`} />
+                        {needsReauth ? 'Access expired' : 'Connected'}
+                        {syncMetadata && (
+                            <span className="text-mute-faint">
+                                &middot; {syncMetadata.total_synced_count || 0} imported
+                            </span>
+                        )}
+                        {lastSyncTime && (
+                            <span className="hidden text-mute-faint sm:inline">
+                                &middot; last synced {new Date(lastSyncTime).toLocaleDateString()}
+                            </span>
+                        )}
+                    </span>
+                ) : (
+                    <span className="text-[0.75rem] font-medium text-mute-dim">
+                        Find applications already sitting in your inbox
+                    </span>
+                )}
+
+                <div className="ml-auto flex items-center gap-2">
+                    {isConnected && needsReauth && (
+                        <button
+                            onClick={connectGmail}
+                            className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-[0.78rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90"
+                        >
+                            <Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
+                            Reconnect
+                        </button>
+                    )}
+                    {isConnected && !needsReauth && (
+                        <button
+                            onClick={() => handleSync(false)}
+                            disabled={isSyncing}
+                            className="inline-flex items-center gap-2 rounded-md border border-line-strong px-3 py-1.5 text-[0.78rem] font-medium text-white transition-colors duration-200 hover:border-line-bright hover:bg-white/[0.06] disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} strokeWidth={1.8} />
+                            {isSyncing ? 'Syncing' : `Sync ${scanDays}d`}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowSettings(!showSettings)}
+                        aria-label="Sync settings"
+                        aria-expanded={showSettings}
+                        className="rounded-md p-1.5 text-mute-faint transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+                    >
+                        <Settings className="h-4 w-4" strokeWidth={1.6} />
+                    </button>
                 </div>
-                <button
-                    onClick={() => setShowSettings(!showSettings)}
-                    className="p-2 hover:bg-muted rounded-lg transition"
-                >
-                    <Settings className="w-5 h-5 text-muted-foreground" />
-                </button>
             </div>
 
             {!isConnected ? (
-                <div className="text-center py-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4">
-                        <Mail className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <p className="text-muted-foreground mb-4">
-                        Connect your Gmail to automatically detect and track job applications
-                    </p>
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-3">
                     <button
                         onClick={connectGmail}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-resume-primary dark:bg-resume-secondary hover:bg-resume-primary/90 hover:dark:bg-resume-secondary/80 text-white rounded-lg transition font-medium"
+                        className="inline-flex items-center gap-2 rounded-md border border-line-strong px-3 py-1.5 text-[0.78rem] font-medium text-white transition-colors duration-200 hover:border-line-bright hover:bg-white/[0.06]"
                     >
-                        <Mail className="w-5 h-5" />
+                        <Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
                         Connect Gmail
                     </button>
-                    <p className="text-xs text-muted-foreground mt-3">
-                        We only read job-related emails. Your data is secure.
+                    <p className="text-[0.72rem] font-medium text-mute-faint">
+                        Only job-related mail is read, and nothing is sent anywhere.
                     </p>
                 </div>
             ) : (
                 <>
                     {/* Settings Panel */}
                     {showSettings && (
-                        <div className="mb-4 p-4 bg-gray-200 dark:bg-gray-900 rounded-lg">
-                            <h4 className="font-medium text-foreground pb-3 border-b">Sync Settings</h4>
-                            <div className="pt-2 space-y-3">
-                                <div>
-                                    <label className="block text-sm text-foreground mb-2">
-                                        Scan last:
-                                    </label>
+                        <div className="mt-3 space-y-3 border-t border-line pt-3">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                                <label className="flex items-center gap-2">
+                                    <span className="text-[0.78rem] font-medium text-mute">Scan last</span>
                                     <select
                                         value={scanDays}
                                         onChange={(e) => setScanDays(Number(e.target.value))}
-                                        className="w-full px-3 py-2 bg-card border rounded text-sm"
+                                        className="rb-input w-auto py-1.5 text-[0.78rem]"
                                     >
                                         <option value={3}>3 days</option>
-                                        <option value={7}>7 days (recommended)</option>
+                                        <option value={7}>7 days</option>
                                         <option value={14}>14 days</option>
-                                        <option value={30}>30 days (slower)</option>
+                                        <option value={30}>30 days</option>
                                     </select>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Longer periods scan more emails but take more time
-                                    </p>
-                                </div>
+                                </label>
 
-                                <label className="flex items-center justify-between">
-                                    <span className="text-sm text-foreground">Auto-sync every 6 hours</span>
+                                <label className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
                                         checked={autoSyncEnabled}
                                         onChange={toggleAutoSync}
-                                        className="w-4 h-4 text-resume-primary focus:ring-resume-primary"
+                                        className="h-3.5 w-3.5 accent-white"
                                     />
+                                    <span className="text-[0.78rem] font-medium text-mute">Auto-sync every 6 hours</span>
                                 </label>
 
                                 <button
                                     onClick={disconnectGmail}
-                                    className="w-full px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition text-sm font-medium"
+                                    className="ml-auto rounded-md border border-line-strong px-3 py-1.5 text-[0.78rem] font-medium text-mute transition-colors duration-200 hover:border-red-500/40 hover:text-red-300"
                                 >
-                                    Disconnect Gmail
+                                    Disconnect
                                 </button>
                             </div>
+                            <p className="text-[0.72rem] font-medium text-mute-faint">
+                                Three syncs a day. Each one only reads mail it has not seen before,
+                                so a wider window costs nothing on the syncs after the first.
+                            </p>
                         </div>
                     )}
 
-                    {/* Sync Status */}
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-sm">
-                            <div className="flex flex-col md:flex-row gap-2">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                    <span className="text-foreground">Connected</span>
-                                </div>
-                                {lastSyncTime && (
-                                    <>
-                                        <span className="md:visible invisible text-muted-foreground">•</span>
-                                        <div className="flex items-center gap-2">
-                                            <Clock className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-muted-foreground">
-                                                Last synced: {new Date(lastSyncTime).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => handleSync(false)}
-                            disabled={isSyncing}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-resume-primary/10 dark:bg-resume-secondary/10 text-resume-primary dark:text-resume-secondary rounded hover:bg-resume-primary/20 dark:hover:bg-resume-secondary/20 transition text-xs md:text-sm font-medium disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            {isSyncing ? 'Syncing...' : `Sync (${scanDays}d)`}
-                        </button>
-                    </div>
-
                     {/* Progress Indicator */}
                     {syncProgress && (
-                        <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 mb-2 animate-pulse">
-                            <RefreshCw className="w-4 h-4 animate-spin" />
+                        <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-[0.75rem] font-medium text-mute-dim">
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />
                             {syncProgress}
                         </div>
                     )}
 
+                    {/* Emails that read as job mail but yielded nothing. They are
+                        already remembered, so they will not be scanned again -
+                        saying so beats letting them vanish. */}
+                    {unreadable.length > 0 && (
+                        <details className="mt-3 border-t border-line pt-3">
+                            <summary className="cursor-pointer text-[0.75rem] font-medium text-mute-dim transition-colors hover:text-white">
+                                {unreadable.length} email{unreadable.length === 1 ? '' : 's'} looked
+                                job-related but could not be read &mdash; add {unreadable.length === 1 ? 'it' : 'them'} by hand
+                            </summary>
+                            <ul className="mt-2 space-y-1">
+                                {unreadable.map((e, i) => (
+                                    <li key={i} className="truncate text-[0.72rem] font-medium text-mute-faint">
+                                        {e.subject} &middot; {e.sender}
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    )}
+
                     {/* Sync Status Message */}
                     {syncStatus && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                            <AlertCircle className="w-4 h-4" />
+                        <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-[0.75rem] font-medium text-mute-dim">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
                             {syncStatus}
                         </div>
                     )}
 
-                    {/* Stats */}
-                    {syncMetadata && (
-                        <div className="mt-4 pt-4 border-t border-border">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Total synced:</span>
-                                <span className="font-medium text-foreground">{syncMetadata.total_synced_count || 0} applications</span>
-                            </div>
-                        </div>
-                    )}
                 </>
             )}
 
-            {/* Review Modal - keeping existing code */}
+            {/* Review: tick what belongs on the board. Nothing is written
+                until Add is pressed, so a wrong reading costs one click. */}
             {showReviewModal && pendingApplications.length > 0 && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-border">
-                        <div className="sticky top-0 bg-card border-b border-border p-6 z-10">
-                            <h2 className="text-2xl font-bold text-foreground">
-                                Review {pendingApplications.length} New Applications
-                            </h2>
-                            <p className="text-muted-foreground mt-1">
-                                Review and edit before importing
-                            </p>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            {pendingApplications.map((app, index) => (
-                                <div key={index} className="bg-muted rounded-lg p-4 border border-border">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h3 className="font-semibold text-foreground">{app.job_title}</h3>
-                                            <p className="text-sm text-muted-foreground">{app.company_name}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => removeFromPending(index)}
-                                            className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded transition"
-                                        >
-                                            <XCircle className="w-5 h-5" />
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span className="text-muted-foreground">Platform:</span>
-                                            <span className="ml-2 text-foreground">{app.platform}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Status:</span>
-                                            <span className="ml-2 text-foreground capitalize">{app.status.replace('_', ' ')}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Applied:</span>
-                                            <span className="ml-2 text-foreground">{new Date(app.application_date).toLocaleDateString()}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Confidence:</span>
-                                            <span className="ml-2 text-foreground capitalize">{app.confidence}</span>
-                                        </div>
-                                    </div>
-                                    {app.notes && (
-                                        <p className="text-sm text-muted-foreground mt-2 italic">
-                                            Note: {app.notes}
-                                        </p>
-                                    )}
-
-                                    <details className="mt-2">
-                                        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                                            Email details
-                                        </summary>
-                                        <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                                            <p>From: {app.email_sender}</p>
-                                            <p>Subject: {app.email_subject}</p>
-                                        </div>
-                                    </details>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="sticky bottom-0 bg-card border-t border-border p-6 flex gap-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+                    <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-line-strong bg-ink-raised shadow-2xl shadow-black/60">
+                        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+                            <div>
+                                <h2 className="text-[1.05rem] text-white">
+                                    {pendingApplications.length} found in your inbox
+                                </h2>
+                                <p className="mt-1 text-[0.78rem] font-medium text-mute-dim">
+                                    Tick the ones to keep. Nothing is added until you confirm.
+                                </p>
+                            </div>
                             <button
-                                onClick={() => importApplications(pendingApplications)}
-                                className="flex-1 px-6 py-3 bg-resume-primary dark:bg-resume-secondary hover:bg-resume-primary/90 hover:dark:bg-resume-secondary/80 text-white rounded-lg transition font-medium"
+                                onClick={() => setSelectedIds(
+                                    selectedIds.length === pendingApplications.length
+                                        ? []
+                                        : pendingApplications.map(a => a.email_message_id)
+                                )}
+                                className="shrink-0 rounded-md border border-line-strong px-3 py-1.5 text-[0.75rem] font-medium text-mute transition-colors duration-200 hover:border-line-bright hover:text-white"
                             >
-                                Import All ({pendingApplications.length})
+                                {selectedIds.length === pendingApplications.length ? 'Clear all' : 'Select all'}
+                            </button>
+                        </div>
+
+                        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-5">
+                            {pendingApplications.map((app) => {
+                                const id = app.email_message_id;
+                                const checked = selectedIds.includes(id);
+                                const decision = preview.decisions[id];
+                                return (
+                                    <label
+                                        key={id}
+                                        className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors duration-200 ${
+                                            checked
+                                                ? 'border-line-bright bg-white/[0.04]'
+                                                : 'border-line bg-ink-soft hover:border-line-strong'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => toggleSelected(id)}
+                                            className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-white"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-baseline gap-x-2">
+                                                <h3 className="text-[0.9rem] text-white">{app.job_title}</h3>
+                                                <span className="text-[0.8rem] font-medium text-mute-dim">{app.company_name}</span>
+                                            </div>
+
+                                            {/* What this will actually do, said plainly. */}
+                                            <p className="mt-1 text-[0.75rem] font-medium text-mute">
+                                                {decision?.action === 'advance' ? (
+                                                    <>
+                                                        Moves {STATUS_LABEL[decision.from] || decision.from} &rarr;{' '}
+                                                        <span className="text-white">{STATUS_LABEL[decision.to] || decision.to}</span>
+                                                    </>
+                                                ) : decision?.action === 'skip' ? (
+                                                    <span className="text-mute-faint">
+                                                        {decision.reason === 'duplicate'
+                                                            ? 'Already imported from this email'
+                                                            : 'Already up to date on the board'}
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        New card in{' '}
+                                                        <span className="text-white">{STATUS_LABEL[app.status] || app.status}</span>
+                                                    </>
+                                                )}
+                                                {app.confidence === 'low' && (
+                                                    <span className="ml-2 text-mute-faint">&middot; low confidence</span>
+                                                )}
+                                            </p>
+
+                                            <p className="mt-1.5 text-[0.72rem] font-medium text-mute-faint">
+                                                {app.platform} &middot; {new Date(app.application_date).toLocaleDateString()}
+                                            </p>
+
+                                            {app.notes && (
+                                                <p className="mt-1.5 text-[0.75rem] font-medium text-mute-dim">{app.notes}</p>
+                                            )}
+
+                                            <p className="mt-1.5 truncate text-[0.72rem] font-medium text-mute-faint">
+                                                {app.email_subject} &middot; {app.email_sender}
+                                            </p>
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-4">
+                            <button
+                                onClick={() => importApplications(
+                                    pendingApplications.filter(a => selectedIds.includes(a.email_message_id))
+                                )}
+                                disabled={selectedIds.length === 0}
+                                className="rounded-md bg-white px-4 py-2 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Add {selectedIds.length} to tracker
                             </button>
                             <button
-                                onClick={() => setShowReviewModal(false)}
-                                className="flex-1 px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition font-medium"
+                                onClick={() => { setShowReviewModal(false); setPendingApplications([]); }}
+                                className="rounded-md border border-line-strong px-4 py-2 text-[0.8rem] font-medium text-mute transition-colors duration-200 hover:border-line-bright hover:text-white"
                             >
                                 Cancel
                             </button>
+                            <span className="ml-auto text-[0.72rem] font-medium text-mute-faint">
+                                Unticked emails are not scanned again
+                            </span>
                         </div>
                     </div>
                 </div>

@@ -110,7 +110,7 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
                     <p style={{
                         textAlign: 'justify',
                         fontSize: `${sizes.body}px`,
-                        lineHeight: '1.3',
+                        lineHeight: layoutSettings.lineHeight,
                         fontWeight: 'normal',
                         marginTop: '6pt',
                         marginBottom: '0'
@@ -247,7 +247,7 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
                                         }}>
                                             {exp.achievements.map((achievement, index) => (
                                                 achievement && <li key={index} style={{
-                                                    lineHeight: '1.3',
+                                                    lineHeight: layoutSettings.lineHeight,
                                                     marginBottom: '3pt',
                                                     position: 'relative',
                                                     paddingLeft: '1.2em'
@@ -345,7 +345,7 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
                                         }}>
                                             {project.description.map((desc, index) => (
                                                 desc && <li key={index} style={{
-                                                    lineHeight: '1.3',
+                                                    lineHeight: layoutSettings.lineHeight,
                                                     marginBottom: '3pt',
                                                     position: 'relative',
                                                     paddingLeft: '1.2em'
@@ -472,7 +472,7 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
                         }}>
                             {resumeData.certifications.map((cert) => (
                                 <li key={cert.id} style={{
-                                    lineHeight: '1.3',
+                                    lineHeight: layoutSettings.lineHeight,
                                     marginBottom: '3pt',
                                     position: 'relative',
                                     paddingLeft: '1.2em',

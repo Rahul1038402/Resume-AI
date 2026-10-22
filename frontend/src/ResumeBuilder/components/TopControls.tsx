@@ -18,9 +18,10 @@ interface TopControlsProps {
  * version used `top-16` without `sticky`, so the Layout tab and the download
  * button slid behind the nav pill as soon as the page moved.
  *
- * Opaque, not frosted: the resume preview behind it is a sheet of white
- * paper, and at 90% the page read straight through as grey. Glass only works
- * when what is behind it is dark.
+ * Frosted and fading out downward, matching the nav directly above it. An earlier attempt used 90%
+ * ink with no backdrop-filter, and the white page behind simply showed
+ * through as grey - translucency without a blur is not glass. With the blur
+ * the white paper becomes a soft wash instead of a muddy panel.
  *
  * Download is the white button because it is the point of the page. Reset is
  * the only red thing here, and only on hover: it throws away everything typed.
@@ -50,8 +51,13 @@ export const TopControls = ({
     );
 
     return (
-        <div className="sticky top-[88px] z-30 border-b border-line bg-ink">
-            <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+        <div className="sticky top-16 z-[110]">
+            {/* On the builder the nav's tail is hidden behind this bar, so the
+                treatment continues from here. */}
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 backdrop-blur-xl backdrop-saturate-150 bg-ink/80 supports-[backdrop-filter]:bg-ink/60" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-full h-5 backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)] bg-[linear-gradient(to_bottom,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0)_100%)]" />
+
+            <div className="relative mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
                 {/* What you are editing */}
                 <div className="flex items-center gap-1 rounded-lg border border-line p-0.5">
                     {tab('editor', 'Editor', Edit3)}

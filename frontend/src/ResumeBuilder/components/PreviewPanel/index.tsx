@@ -63,7 +63,7 @@ const PreviewPanel = ({
     }, [pageDimensions.widthPx, pageDimensions.heightPx]);
 
     return (
-        <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-ink-soft p-3 custom:h-[calc(100vh-212px)] custom:w-[44%] custom:min-w-[460px] custom:max-w-[820px]">
+        <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-ink-soft p-3 custom:h-[calc(100vh-188px)] custom:w-[44%] custom:min-w-[460px] custom:max-w-[820px]">
 
             {/* Header. Title, save state and the suggestions count share one
                 baseline - the count used to float over the panel's corner

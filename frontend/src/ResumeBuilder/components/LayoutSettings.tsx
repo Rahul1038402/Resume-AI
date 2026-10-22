@@ -100,10 +100,7 @@ export const LayoutSettings = ({
                             type="number"
                             value={layoutSettings.margins.left}
                             onChange={(e) => updateMargin('left', parseInt(e.target.value) || 20)}
-                            className="wh-8 w-full p-2 text-xs rounded-md border border-line bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-white/30 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150 font-medium"
+                            className="rb-input"
                             min="10"
                             max="50"
                         />

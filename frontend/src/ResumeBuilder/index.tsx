@@ -109,15 +109,30 @@ function ResumeBuilder() {
     };
 
     const handleDownload = async () => {
-        const resumeEl = document.querySelector('.resume-content');
-        if (!resumeEl) return;
+        /*
+         * Send the whole page box, not just .resume-content.
+         *
+         * The page box is what carries the page size, the margins as padding,
+         * and the font size, line height and family the user picked. Sending
+         * only its child meant the backend had to reconstruct all of that from
+         * layoutSettings, and every reconstruction drifted: the harvested
+         * Tailwind preflight reset the line height, and block spacing came out
+         * around 20% larger than the preview. Shipping the same box the user is
+         * looking at makes the PDF a render of the preview rather than a
+         * rebuild of it.
+         */
+        const pageEl = document.getElementById('resume-preview');
+        if (!pageEl) return;
 
         try {
             setIsDownloading(true);
             setDownloadProgress(0);
 
-            // Get ALL computed styles from the element
-            const htmlContent = resumeEl.outerHTML;
+            // The drop shadow and ring are panel presentation, not the page.
+            const clone = pageEl.cloneNode(true) as HTMLElement;
+            clone.classList.remove('shadow-2xl', 'shadow-black/60', 'ring-1', 'ring-white/10');
+            clone.style.boxShadow = 'none';
+            const htmlContent = clone.outerHTML;
 
             // Extract inline styles from the document
             const styleSheets = Array.from(document.styleSheets);
@@ -166,8 +181,8 @@ function ResumeBuilder() {
     return (
         <>
             <Header />
-            {/* pt-24 clears the floating nav; the toolbar below sticks under it. */}
-            <div className="min-h-screen bg-ink pt-24">
+            {/* pt-16 clears the fixed bar; the toolbar sticks directly under it. */}
+            <div className="min-h-screen bg-ink pt-16">
                 {/* Top Controls */}
                 <TopControls
                     activeTab={activeTab}
@@ -184,7 +199,7 @@ function ResumeBuilder() {
                     <div className="flex flex-col items-start justify-center gap-4 custom:flex-row">
                         {/* Left column: the section chips sit directly above
                             the form they drive, rather than spanning the page. */}
-                        <div className="flex w-full min-w-0 flex-col custom:h-[calc(100vh-212px)] custom:max-w-[880px] custom:flex-1">
+                        <div className="flex w-full min-w-0 flex-col custom:h-[calc(100vh-188px)] custom:max-w-[880px] custom:flex-1">
                             {activeTab === 'editor' && (
                                 <SectionNavigation
                                     activeSection={activeSection}

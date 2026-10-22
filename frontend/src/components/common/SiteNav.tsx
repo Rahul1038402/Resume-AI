@@ -27,7 +27,7 @@ import { Logo } from "./Logo";
  * both columns size off that, so changing this height means changing
  * TopControls and the two calc(100vh - …) panels with it.
  */
-const REPO_URL = "https://github.com/Rahul1038402/Resume-AI-Rework";
+const REPO_URL = "https://github.com/Rahul1038402/Resume-AI";
 
 const links = [
   { label: "Home", to: "/" },

@@ -35,9 +35,12 @@ export const useConversationHistory = ({ section, enabled = true }: UseConversat
 
   const [messages, setMessages] = useState<AIMessage[]>(loadSavedConversation);
 
-  // Save conversation to localStorage whenever it changes
+  // Save conversation to localStorage whenever it changes.
+  //
+  // Skipped while empty: the assistant owns this key now, and an empty
+  // initial render here would otherwise overwrite a real conversation.
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || messages.length === 0) return;
 
     try {
       // Limit history size to prevent localStorage overflow
@@ -106,9 +109,28 @@ export const useConversationHistory = ({ section, enabled = true }: UseConversat
     }
   }, [storageKey]);
 
-  // Export conversation as JSON (for debugging or backup)
+  /*
+   * Export conversation as JSON.
+   *
+   * Reads storage rather than this hook's own `messages`. The sections only
+   * destructure `exportConversation` from here and never call `addMessage`,
+   * so that state is whatever was loaded at mount - which meant Export
+   * downloaded the conversation as it stood before you said anything. The
+   * assistant writes the live conversation to the same key.
+   */
   const exportConversation = useCallback(() => {
-    const dataStr = JSON.stringify(messages, null, 2);
+    let current = messages;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) current = parsed;
+      }
+    } catch {
+      /* fall back to whatever is in memory */
+    }
+
+    const dataStr = JSON.stringify(current, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     
@@ -118,7 +140,7 @@ export const useConversationHistory = ({ section, enabled = true }: UseConversat
     link.click();
     
     URL.revokeObjectURL(url);
-  }, [messages, section]);
+  }, [messages, section, storageKey]);
 
   // Get conversation summary stats
   const getStats = useCallback(() => {

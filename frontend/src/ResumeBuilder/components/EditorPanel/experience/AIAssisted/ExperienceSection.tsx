@@ -57,6 +57,7 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
     rateLimits,
     sendMessage,
     setSuggestion,
+    recordSuggestionOutcome,
     clearMessages,
     cancelRequest
   } = useAIAssistant({
@@ -72,8 +73,16 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
   });
 
   // Handle accepting AI suggestion
+  const experiencePreview = () =>
+    currentSuggestion && 'position' in currentSuggestion
+      ? `${currentSuggestion.position} at ${currentSuggestion.company}`
+      : '';
+
   const handleAcceptSuggestion = (edited: ParsedExperience) => {
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'accepted', label: 'Experience',
+      preview: `${edited.position} at ${edited.company}`,
+    });
 
     addExperience();
     
@@ -93,7 +102,9 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 
   // Handle rejecting suggestion
   const handleRejectSuggestion = () => {
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'rejected', label: 'Experience', preview: experiencePreview(),
+    });
   };
 
   // Handle refinement requests
@@ -106,7 +117,9 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
       simplify: "Can you simplify this to be more concise and accessible?"
     };
 
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'refined', label: 'Experience', preview: experiencePreview(),
+    });
     sendMessage(refinementPrompts[refinementType] || refinementPrompts.quantify);
   };
 
@@ -122,7 +135,7 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       {/* AI Mode Toggle */}
       <AIModeToggle
         mode={mode}
@@ -132,7 +145,7 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 
       {/* AI Mode Interface */}
       {isAIMode && (
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1">
           <AIChatInterface
             messages={messages}
             isLoading={isLoading}
@@ -155,15 +168,19 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 
       {/* Manual Mode Interface */}
       {!isAIMode && (
-        <ExperienceEditor
-          experience={experience}
-          addExperience={addExperience}
-          updateExperience={updateExperience}
-          deleteExperience={deleteExperience}
-          addExperienceAchievement={addExperienceAchievement}
-          updateExperienceAchievement={updateExperienceAchievement}
-          deleteExperienceAchievement={deleteExperienceAchievement}
-        />
+          /* Manual mode scrolls inside the same fixed column, so the
+             mode switch above stays put either way. */
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <ExperienceEditor
+              experience={experience}
+              addExperience={addExperience}
+              updateExperience={updateExperience}
+              deleteExperience={deleteExperience}
+              addExperienceAchievement={addExperienceAchievement}
+              updateExperienceAchievement={updateExperienceAchievement}
+              deleteExperienceAchievement={deleteExperienceAchievement}
+            />
+          </div>
       )}
     </div>
   );

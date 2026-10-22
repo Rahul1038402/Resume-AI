@@ -67,6 +67,7 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
     rateLimits,
     sendMessage,
     setSuggestion,
+    recordSuggestionOutcome,
     clearMessages,
     cancelRequest
   } = useAIAssistant({
@@ -82,9 +83,14 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
   });
 
   // Handle accepting AI suggestion
+  const projectPreview = () =>
+    currentSuggestion && 'title' in currentSuggestion ? currentSuggestion.title : '';
+
   const handleAcceptSuggestion = (edited: ParsedProject) => {
-    // Clear suggestion FIRST
-    setSuggestion(null);
+    // Recording the outcome clears the card and leaves a line saying so.
+    recordSuggestionOutcome({
+      status: 'accepted', label: 'Project', preview: edited.title,
+    });
     
     // Add new project
     addProject();
@@ -103,8 +109,9 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
 
   // Handle rejecting suggestion
   const handleRejectSuggestion = () => {
-    // Clear suggestion FIRST
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'rejected', label: 'Project', preview: projectPreview(),
+    });
   };
 
   // Handle refinement requests
@@ -118,15 +125,16 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
       expand: "Can you expand each point with more context and detail?"
     };
 
-    // Clear current suggestion before sending refinement request
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'refined', label: 'Project', preview: projectPreview(),
+    });
     
     // Send refinement request
     sendMessage(refinementPrompts[refinementType] || refinementPrompts.quantify);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       {/* AI Mode Toggle */}
       <AIModeToggle
         mode={mode}
@@ -136,7 +144,7 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
 
       {/* AI Mode Interface */}
       {isAIMode && (
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1">
           <AIChatInterface
             messages={messages}
             isLoading={isLoading}
@@ -159,15 +167,19 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
 
       {/* Manual Mode Interface */}
       {!isAIMode && (
-        <ManualProjectsEditor
-          projects={projects}
-          addProject={addProject}
-          updateProject={updateProject}
-          deleteProject={deleteProject}
-          addProjectDescription={addProjectDescription}
-          updateProjectDescription={updateProjectDescription}
-          deleteProjectDescription={deleteProjectDescription}
-        />
+          /* Manual mode scrolls inside the same fixed column, so the
+             mode switch above stays put either way. */
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <ManualProjectsEditor
+              projects={projects}
+              addProject={addProject}
+              updateProject={updateProject}
+              deleteProject={deleteProject}
+              addProjectDescription={addProjectDescription}
+              updateProjectDescription={updateProjectDescription}
+              deleteProjectDescription={deleteProjectDescription}
+            />
+          </div>
       )}
     </div>
   );

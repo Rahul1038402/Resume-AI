@@ -22,7 +22,14 @@ export const ResumePreview = ({ resumeData, layoutSettings }: ResumePreviewProps
     return (
         <div className="resume-content" style={{
             fontFamily: layoutSettings.fontFamily,
-            height: '10.7in',
+            /*
+             * No fixed height.
+             *
+             * This was pinned at 10.7in, which made every resume report the
+             * same height whatever was in it - so nothing could tell a half
+             * page from an overflowing one. The sheet around it defines the
+             * page now; this just has to be as tall as its content.
+             */
             wordWrap: 'break-word',
             overflowWrap: 'break-word',
             maxWidth: '100%',

@@ -15,7 +15,6 @@ const Analyzer = lazy(() => import("./ResumeAnalyzer/index"));
 const About = lazy(() => import("./AboutUs/index"));
 const NotFound = lazy(() => import("./NotFound/index"));
 const JobTracker = lazy(() => import("./JobTracker/index"));
-const AboutMe = lazy(() => import("./AboutMe/index"));
 {/*const ATSComparisonPage = lazy(() => import("./ATSComp/index"));*/}
 const ResumeBuilder = lazy(() => import("./ResumeBuilder/index"));
 
@@ -35,7 +34,6 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/analyzer" element={<Analyzer />} />
                 <Route path="/about" element={<About />} />
-                <Route path="/aboutme" element={<AboutMe />} />
                 <Route path="/builder" element={<ResumeBuilder />} />
                 <Route path="/tracker" element={<JobTracker />} />
                 {/*<Route path="/ats" element={<ATSComparisonPage />} /> */}

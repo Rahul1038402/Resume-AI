@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, AlertCircle, Trash2, X, Download, ArrowRight } from 'lucide-react';
+import { Send, Loader2, AlertCircle, Trash2, X, Download, ArrowUp, Square, Check, RefreshCw } from 'lucide-react';
 import { AIMessage } from './types';
 
 interface AIChatInterfaceProps {
@@ -22,6 +22,9 @@ interface AIChatInterfaceProps {
     onRefineSuggestion?: (type: string) => void;
     suggestionCardComponent?: React.ComponentType<any>;
 }
+
+/** One row when empty, three at most. */
+const MAX_INPUT_ROWS = 3;
 
 export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
     messages,
@@ -49,6 +52,36 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, currentSuggestion]);
 
+    /*
+     * Grow the field with what is typed: one row empty, up to three, then
+     * stop.
+     *
+     * It was a fixed two rows, so an empty box reserved a blank line and a
+     * long answer scrolled inside a window too small to read it - the thing
+     * you are composing should be visible while you compose it.
+     *
+     * Measured from the computed style rather than assumed, so changing the
+     * font size or padding does not quietly break the maximum.
+     */
+    useEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+
+        el.style.height = 'auto';
+
+        const cs = window.getComputedStyle(el);
+        const line = parseFloat(cs.lineHeight) || 20;
+        const padding = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        const border = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+
+        const max = line * MAX_INPUT_ROWS + padding + border;
+        const wanted = el.scrollHeight + border;
+
+        el.style.height = `${Math.min(wanted, max)}px`;
+        // Past three rows it still scrolls; .no-scrollbar just hides the track.
+        el.style.overflowY = wanted > max ? 'auto' : 'hidden';
+    }, [inputValue]);
+
     // Auto-focus input
     useEffect(() => {
         if (!isLoading) {
@@ -75,7 +108,15 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
     const isRateLimitExhausted = rateLimits && rateLimits.remaining_section === 0;
 
     return (
-        <div className="flex h-[520px] flex-col overflow-hidden rounded-xl border border-line bg-ink">
+        /*
+          * Fills whatever height the editor column gives it.
+          *
+          * This was a fixed 520px, which together with the mode toggle came to
+          * more than the panel had - so the panel itself scrolled, and the
+          * Manual / AI Assisted switch scrolled off the top. The only thing
+          * that should ever scroll here is the transcript.
+          */
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-ink">
             {/* Header */}
             <div className="flex items-center justify-end p-2 border-b border-line dark:bg-black">
                 <div className="flex items-center gap-2">
@@ -128,7 +169,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 && !showWelcome && (
                     <div className="flex h-[95%] items-center justify-center">
                         <p className="max-w-xs text-center text-[0.8rem] leading-relaxed text-mute-faint">
@@ -139,6 +180,57 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
 
                 {messages.map(message => {
                     const isUser = message.role === 'user';
+
+                    /*
+                     * A suggestion that has been dealt with. Compact on
+                     * purpose: the full text already lives in the resume, so
+                     * this only has to be enough to recognise which one it
+                     * was and what happened to it.
+                     */
+                    if (message.outcome) {
+                        const { status, label, preview } = message.outcome;
+                        const accepted = status === 'accepted';
+                        const refined = status === 'refined';
+                        const verb = accepted ? 'Added to resume'
+                            : refined ? 'Sent back for changes'
+                            : 'Dismissed';
+
+                        return (
+                            <div key={message.id} className="flex justify-start">
+                                <div className={`max-w-[90%] w-full rounded-lg border px-3.5 py-2.5 ${
+                                    accepted
+                                        ? 'border-line-bright bg-white/[0.05]'
+                                        : 'border-line bg-ink-card/60'
+                                }`}>
+                                    <div className="flex items-center gap-2">
+                                        {accepted ? (
+                                            <Check size={13} className="shrink-0 text-white" strokeWidth={2.4} />
+                                        ) : refined ? (
+                                            <RefreshCw size={13} className="shrink-0 text-mute" strokeWidth={2.2} />
+                                        ) : (
+                                            <X size={13} className="shrink-0 text-mute-faint" strokeWidth={2.4} />
+                                        )}
+                                        <span className={`text-[0.78rem] font-medium ${accepted ? 'text-white' : 'text-mute'}`}>
+                                            {verb}
+                                        </span>
+                                        <span className="truncate text-[0.72rem] font-medium text-mute-faint">
+                                            &middot; {label}
+                                        </span>
+                                        <span className="ml-auto shrink-0 text-[0.65rem] font-medium text-mute-faint">
+                                            {message.timestamp.toLocaleTimeString()}
+                                        </span>
+                                    </div>
+                                    {preview && (
+                                        <p className={`mt-1.5 line-clamp-2 text-[0.75rem] leading-relaxed ${
+                                            accepted ? 'text-mute-dim' : 'text-mute-faint line-through decoration-white/20'
+                                        }`}>
+                                            {preview}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }
 
                     return (
                         <div
@@ -206,7 +298,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
             </div>
 
             {/* Input Area */}
-            <div className="border-t border-line p-4 dark:bg-black">
+            <div className="shrink-0 border-t border-line p-4 dark:bg-black">
                 {isRateLimitLow && !isRateLimitExhausted && (
                     <div className="mb-2.5 rounded-md border border-line bg-white/[0.03] p-2 text-[0.7rem] text-mute font-medium">
                         Only {rateLimits?.remaining_section} requests remaining for this section
@@ -220,7 +312,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="flex gap-2">
+                <form onSubmit={handleSubmit} className="flex items-end gap-2">
                     <textarea
                         ref={inputRef}
                         value={inputValue}
@@ -232,28 +324,32 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
                                 : "Tell me about yourself..."
                         }
                         disabled={isLoading || isRateLimitExhausted}
-                        className="flex-1 resize-none rounded-lg border border-line-strong bg-ink-soft px-3 py-2.5 text-[0.8rem] text-white placeholder:text-mute-faint transition-colors duration-200 focus:border-white/40 focus:outline-none disabled:opacity-50"
-                        rows={2}
+                        className="no-scrollbar max-h-40 flex-1 resize-none overflow-hidden rounded-lg border border-line-strong bg-ink-soft px-3 py-2.5 text-[0.8rem] leading-relaxed text-white placeholder:text-mute-faint transition-colors duration-200 focus:border-white/40 focus:outline-none disabled:opacity-50"
+                        rows={1}
                     />
-                    <div className="flex flex-col gap-2">
-                        {isLoading && onCancelRequest ? (
-                            <button
-                                type="button"
-                                onClick={onCancelRequest}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2 h-full"
-                            >
-                                <X size={18} />
-                            </button>
-                        ) : (
-                            <button
-                                type="submit"
-                                disabled={!inputValue.trim() || isLoading || isRateLimitExhausted}
-                                className="flex h-full items-center gap-2 rounded-lg bg-white px-4 py-2 text-ink transition-colors duration-200 hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-mute-faint disabled:text-ink/60"
-                            >
-                                <ArrowRight size={18} />
-                            </button>
-                        )}
-                    </div>
+                    {/* A fixed square that stays pinned to the bottom of the
+                        field as it grows, rather than stretching with it. */}
+                    {isLoading && onCancelRequest ? (
+                        <button
+                            type="button"
+                            onClick={onCancelRequest}
+                            aria-label="Stop generating"
+                            title="Stop generating"
+                            className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border border-line-strong bg-ink-raised text-mute transition-colors duration-200 hover:border-line-bright hover:text-white"
+                        >
+                            <Square size={13} fill="currentColor" strokeWidth={0} />
+                        </button>
+                    ) : (
+                        <button
+                            type="submit"
+                            disabled={!inputValue.trim() || isLoading || isRateLimitExhausted}
+                            aria-label="Send message"
+                            title="Send message"
+                            className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg bg-white text-ink transition-all duration-200 hover:bg-white/90 disabled:cursor-not-allowed disabled:border disabled:border-line-strong disabled:bg-transparent disabled:text-mute-faint"
+                        >
+                            <ArrowUp size={17} strokeWidth={2.4} />
+                        </button>
+                    )}
                 </form>
 
                 <p className="mt-2 text-[0.7rem] font-medium text-mute">

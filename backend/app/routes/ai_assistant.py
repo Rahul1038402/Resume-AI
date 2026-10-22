@@ -9,6 +9,9 @@ from app.prompts.skills_prompts import SkillsPrompts
 from app.prompts.experience_prompts import ExperiencePrompts
 import json
 from datetime import datetime, timedelta
+from app.rate_limit import (
+    MAX_TRACKED_KEYS, RESET_HOURS, get_client_key, prune_expired,
+)
 
 ai_bp = Blueprint('ai_assistant', __name__, url_prefix='/api/ai-assist')
 
@@ -28,36 +31,11 @@ user_session_counts = {}
 # Rate limit constants
 SECTION_LIMIT = 15
 SESSION_LIMIT = 50
-RESET_HOURS = 24
-MAX_TRACKED_KEYS = 5000
-
-def get_client_key() -> str:
-    """Identify the caller for rate limiting.
-
-    Prefers the real client IP behind Render/Vercel proxies. The session_id
-    posted by the browser is not trusted: it is regenerated on every mount,
-    which made the limits trivially resettable by reloading the page.
-    """
-    forwarded = request.headers.get('X-Forwarded-For', '')
-    if forwarded:
-        return forwarded.split(',')[0].strip()
-    return request.remote_addr or 'unknown'
 
 def prune_expired_counts(current_time) -> None:
-    """Drop expired buckets so the dict cannot grow without bound."""
+    """Drop expired buckets so the dicts cannot grow without bound."""
     for store in (user_request_counts, user_session_counts):
-        expired = [
-            key for key, counts in store.items()
-            if current_time - counts['last_reset'] > timedelta(hours=RESET_HOURS)
-        ]
-        for key in expired:
-            del store[key]
-
-        # Hard cap as a backstop against many short-lived clients
-        if len(store) > MAX_TRACKED_KEYS:
-            oldest = sorted(store.items(), key=lambda kv: kv[1]['last_reset'])
-            for key, _ in oldest[:len(store) - MAX_TRACKED_KEYS]:
-                del store[key]
+        prune_expired(store, current_time)
 
 def get_bucket(store: dict, key: str, field: str, current_time):
     """Fetch a counter bucket, creating it or rolling it over as needed."""

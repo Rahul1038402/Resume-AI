@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify, send_file
 from playwright.sync_api import sync_playwright
 from werkzeug.exceptions import RequestEntityTooLarge
 from app.groq_analyzer import analyze_resume_with_groq, extract_text_from_pdf, extract_text_from_docx, test_groq_connection
+from app.rate_limit import DailyLimiter
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -39,6 +40,14 @@ def health_check():
             "error": str(e)
         }), 500
 
+# One scan is the most expensive thing this backend does: roughly 3,000 of
+# the ~200k tokens Groq allows per day. Without a per-caller cap a single
+# visitor could spend the whole budget, so the rest of the day returns
+# errors for everyone else.
+ANALYSES_PER_DAY = int(os.environ.get("ANALYSES_PER_DAY", "5"))
+analysis_limiter = DailyLimiter(ANALYSES_PER_DAY, name="resume scan")
+
+
 @routes.route("/analyze", methods=["POST", "OPTIONS"])
 def analyze_resume_api():
     """Analyze resume against a target job using Gemini AI."""
@@ -46,7 +55,20 @@ def analyze_resume_api():
         return "", 200
 
     try:
+        allowed, quota = analysis_limiter.check()
+        if not allowed:
+            hours, rem = divmod(quota["resets_in_seconds"], 3600)
+            return jsonify({
+                "error": (
+                    f"You have used all {quota['limit']} resume scans for today. "
+                    f"The next one unlocks in {hours}h {rem // 60}m."
+                ),
+                "rate_limit": quota,
+            }), 429
+
         if "file" not in request.files:
+            # Nothing was analysed, so do not charge the scan.
+            analysis_limiter.refund()
             return jsonify({"error": "No file uploaded"}), 400
 
         file = request.files["file"]
@@ -55,6 +77,7 @@ def analyze_resume_api():
 
         # Validate file type
         if not file.filename.lower().endswith(('.pdf', '.docx')):
+            analysis_limiter.refund()
             return jsonify({"error": "Only PDF and DOCX files are supported"}), 400
 
         # Save file to a temporary location
@@ -80,9 +103,11 @@ def analyze_resume_api():
         os.remove(tmp_path)
         logger.info("Analysis completed successfully")
 
+        result["rate_limit"] = quota
         return jsonify(result)
 
     except RequestEntityTooLarge:
+        analysis_limiter.refund()
         return jsonify({"error": "File too large. Maximum allowed size is 10MB."}), 413
 
     except Exception as e:
@@ -90,6 +115,8 @@ def analyze_resume_api():
         if 'tmp_path' in locals() and os.path.exists(tmp_path):
             os.remove(tmp_path)
         
+        # A failed analysis is not a scan the user got anything from.
+        analysis_limiter.refund()
         logger.error(f"Unexpected error in /analyze: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({
@@ -324,6 +351,12 @@ def generate_pdf():
         page_size = layout_settings.get('pageSize', 'A4')
         font_family = layout_settings.get('fontFamily', '"CMU Serif", "Computer Modern Serif", Georgia, serif')
 
+        # The preview puts these on the page wrapper, but the client sends only
+        # .resume-content - which sits inside that wrapper - so they have to be
+        # reapplied here or the PDF silently uses 16px/1.5 instead.
+        font_size = layout_settings.get('fontSize', 12)
+        line_height = layout_settings.get('lineHeight', '1.2')
+
         # Construct full HTML document with embedded styles
         full_html = f"""
         <!DOCTYPE html>
@@ -344,7 +377,6 @@ def generate_pdf():
                     font-family: {font_family};
                     background: white;
                     color: black;
-                    line-height: 1.5;
                 }}
                 
                 /* Force text-center to work */
@@ -365,10 +397,6 @@ def generate_pdf():
                     align-items: baseline !important;
                 }}
                 
-                .mb-3 {{
-                    margin-bottom: 0.75rem !important;
-                }}
-                
                 a {{
                     color: rgb(0, 51, 153);
                     text-decoration: none;
@@ -380,6 +408,27 @@ def generate_pdf():
                 }}
                 
                 {css_content}
+
+                /* Last word, after the harvested rules. The client sends every
+                   stylesheet it can read, and those belong to a dark-themed
+                   app: one of them paints the root black, which showed as a
+                   black band under the resume on every page. Printed output is
+                   white paper regardless of what the app's theme says. */
+                html, body {{
+                    background: #ffffff !important;
+                    color: #000000 !important;
+                }}
+
+                /* The client sends the page box itself, which carries the page
+                   size, the margins as padding, and the chosen font size, line
+                   height and family as inline styles. Nothing here should
+                   contest them - the PDF is meant to be a render of the
+                   preview, not a rebuild of it. Page margins are therefore 0
+                   below, or the margins would be applied a second time. */
+                body {{
+                    display: flex;
+                    justify-content: center;
+                }}
             </style>
         </head>
         <body>
@@ -414,12 +463,7 @@ def generate_pdf():
             pdf_bytes = page.pdf(
                 format=page_size,
                 print_background=True,
-                margin={
-                    'top': margin_top,
-                    'right': margin_right,
-                    'bottom': margin_bottom,
-                    'left': margin_left
-                },
+                margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'},
                 prefer_css_page_size=False
             )
             

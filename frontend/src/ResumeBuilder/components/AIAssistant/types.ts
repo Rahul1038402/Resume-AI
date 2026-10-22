@@ -2,12 +2,28 @@
  * TypeScript types for AI Assistant feature - Updated for all sections
  */
 
+/**
+ * What became of a suggestion.
+ *
+ * Accepting or dismissing one used to remove the card and leave nothing
+ * behind, so a conversation that had produced a summary read afterwards as
+ * if nothing had happened. This is the receipt that stays in the transcript.
+ */
+export interface SuggestionOutcome {
+  status: 'accepted' | 'rejected' | 'refined';
+  /** What kind of thing it was, e.g. "Professional Summary". */
+  label: string;
+  /** One line of what it actually said, for recognising it later. */
+  preview: string;
+}
+
 export interface AIMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
   isSuggestion?: boolean;
+  outcome?: SuggestionOutcome;
 }
 
 export interface AIAssistantState {

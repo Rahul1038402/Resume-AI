@@ -7,7 +7,7 @@ const About = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 pt-28 pb-12 z-[-3]">
+      <div className="container mx-auto px-4 pt-24 pb-12 z-[-3]">
         <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">

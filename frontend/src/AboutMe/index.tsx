@@ -5,7 +5,7 @@ import IconMarquee from "@/components/ui/linksmarquee";
 export default function AboutMe() {
   return (
     <Layout>
-      <div className="min-h-screen pt-28 pb-16 px-6">
+      <div className="min-h-screen pt-24 pb-16 px-6">
         <div className="max-w-4xl mx-auto">
           {/* Heading */}
           <h1 className="text-4xl text-resume-primary dark:text-resume-secondary mb-6 text-center">

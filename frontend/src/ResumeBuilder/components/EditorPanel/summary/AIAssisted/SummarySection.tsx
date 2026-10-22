@@ -55,6 +55,7 @@ const SummarySection: React.FC<SummarySectionProps> = ({
     rateLimits,
     sendMessage,
     setSuggestion,
+    recordSuggestionOutcome,
     clearMessages,
     cancelRequest
   } = useAIAssistant({
@@ -69,15 +70,23 @@ const SummarySection: React.FC<SummarySectionProps> = ({
     enabled: isAIMode
   });
 
+  // Short enough to recognise the suggestion later in the transcript.
+  const summaryPreview = () =>
+    currentSuggestion && 'summary' in currentSuggestion ? currentSuggestion.summary : '';
+
   // Handle accepting AI suggestion
   const handleAcceptSuggestion = (edited: string) => {
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'accepted', label: 'Professional summary', preview: edited,
+    });
     updateSummary(edited);
   };
 
   // Handle rejecting suggestion
   const handleRejectSuggestion = () => {
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'rejected', label: 'Professional summary', preview: summaryPreview(),
+    });
   };
 
   // Handle refinement requests
@@ -90,12 +99,14 @@ const SummarySection: React.FC<SummarySectionProps> = ({
       simplify: "Can you simplify this summary while keeping the impact?"
     };
 
-    setSuggestion(null);
+    recordSuggestionOutcome({
+      status: 'refined', label: 'Professional summary', preview: summaryPreview(),
+    });
     sendMessage(refinementPrompts[refinementType] || refinementPrompts.impactful);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       {/* AI Mode Toggle */}
       <AIModeToggle
         mode={mode}
@@ -105,7 +116,7 @@ const SummarySection: React.FC<SummarySectionProps> = ({
 
       {/* AI Mode Interface */}
       {isAIMode && (
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1">
           <AIChatInterface
             messages={messages}
             isLoading={isLoading}
@@ -128,10 +139,14 @@ const SummarySection: React.FC<SummarySectionProps> = ({
 
       {/* Manual Mode Interface */}
       {!isAIMode && (
-        <SummaryEditor
-          summary={summary}
-          updateSummary={updateSummary}
-        />
+          /* Manual mode scrolls inside the same fixed column, so the
+             mode switch above stays put either way. */
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <SummaryEditor
+              summary={summary}
+              updateSummary={updateSummary}
+            />
+          </div>
       )}
     </div>
   );

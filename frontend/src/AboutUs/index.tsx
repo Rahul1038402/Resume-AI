@@ -69,7 +69,7 @@ const About = () => {
     <Layout>
       <div className="bg-ink pt-16">
         {/* Hero */}
-        <section className="relative overflow-hidden px-6 pb-16 pt-20">
+        <section className="relative overflow-hidden px-6 pb-14 pt-20 sm:pb-20">
           {/* The same overhead wash the landing hero uses. */}
           <div
             aria-hidden="true"
@@ -95,11 +95,11 @@ const About = () => {
         </section>
 
         {/* Principles */}
-        <section className="relative px-6 pb-24">
+        <section className="relative px-6 pb-14 pt-14 sm:pb-20 sm:pt-20">
           <SectionHead
             badge="How it is built"
             parts={["Four things that ", dim("do not change")]}
-            className="mb-14"
+            className="mb-12 sm:mb-16"
           />
           <div className="mx-auto grid w-full max-w-5xl gap-4 sm:grid-cols-2">
             {PRINCIPLES.map((p, i) => (
@@ -116,11 +116,11 @@ const About = () => {
         </section>
 
         {/* Steps */}
-        <section className="relative px-6 pb-24">
+        <section className="relative px-6 pb-14 pt-14 sm:pb-20 sm:pt-20">
           <SectionHead
             badge="The loop"
             parts={["Read it, ", dim("fix it, send it, track it")]}
-            className="mb-14"
+            className="mb-12 sm:mb-16"
           />
           <div className="mx-auto grid w-full max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s, i) => (
@@ -140,11 +140,11 @@ const About = () => {
         </section>
 
         {/* Who built it, and the coffee */}
-        <section className="relative px-6 pb-24">
+        <section className="relative px-6 pb-14 pt-14 sm:pb-20 sm:pt-20">
           <SectionHead
             badge="Support"
             parts={["Built by one person, ", dim("kept free by choice")]}
-            className="mb-14"
+            className="mb-12 sm:mb-16"
           />
 
           <FadeUp>
@@ -209,7 +209,7 @@ const About = () => {
         </section>
 
         {/* CTA */}
-        <section className="relative px-6 pb-28">
+        <section className="relative px-6 pb-24 pt-14 sm:pb-32 sm:pt-20">
           <FadeUp>
             <Card className="mx-auto w-full max-w-5xl p-10 text-center sm:p-14">
               <TwoTone

@@ -1,148 +1,238 @@
+import { Coffee, Github, Globe, Mail } from "lucide-react";
 import Layout from "@/components/common/Layout";
-import GradientText from "@/components/ui/GradientText";
-import GlowingCards, { GlowingCard } from "@/components/ui/glowing-cards";
-import { Link } from "react-router-dom";
+import {
+  Arrow,
+  Button,
+  Card,
+  FadeUp,
+  SectionHead,
+  TwoTone,
+  dim,
+} from "@/LandingPage/ui/kit";
+
+/**
+ * About.
+ *
+ * Rebuilt on the landing page's kit rather than on its own set of primitives.
+ * The previous version used an animated five-colour gradient headline, glowing
+ * cards on two accent hues, emoji as section icons and a saturated CTA block -
+ * none of which exist anywhere else in the app any more, so the one page that
+ * explains the product was the one page that looked like a different product.
+ *
+ * Same ladder as everywhere else: ink, card, raised, hairline borders, and
+ * white as the only accent.
+ *
+ * This page also absorbed the separate "About me" route. That page carried
+ * three things worth keeping - who built this, where to find their other work,
+ * and the way to support it - and a whole route for three paragraphs was more
+ * navigation than the content justified.
+ */
+
+const PRINCIPLES = [
+  {
+    title: "Free, and actually free",
+    body:
+      "No account to read your score, no credit card, no trial that ends. The analyser, the builder and the tracker are all open to anyone, and the source is public.",
+  },
+  {
+    title: "Your resume is not stored",
+    body:
+      "Uploads are parsed in memory and dropped when the request ends. Nothing is written to disk and nothing is used for training. Only the applications you deliberately save are kept, behind per-user row-level policies.",
+  },
+  {
+    title: "Written for the machine first",
+    body:
+      "An applicant tracking system reads a flat stream of text, not a layout. Every default here - the single column, the serif body, the plain section headings - is chosen because parsers handle it predictably.",
+  },
+  {
+    title: "No invented numbers",
+    body:
+      "Scores are computed in code from what the parser actually found. The model reads and extracts; it never decides the arithmetic, so a score cannot be talked upward by anything written in a resume.",
+  },
+];
+
+const STEPS = [
+  { n: "01", title: "Analyze", body: "Upload a resume and a job description, and see what a parser sees." },
+  { n: "02", title: "Build", body: "Fix the gaps in an editor that previews the exact PDF you will send." },
+  { n: "03", title: "Apply", body: "Download a single-column PDF that survives the parse." },
+  { n: "04", title: "Track", body: "Keep every application on one board, synced from your inbox." },
+];
+
+const LINKS = [
+  { Icon: Github, href: "https://github.com/Rahul1038402", label: "GitHub" },
+  { Icon: Globe, href: "https://rahul-kumar-mall.vercel.app/", label: "Portfolio" },
+  { Icon: Mail, href: "mailto:rahul1038402@gmail.com", label: "Email" },
+];
 
 const About = () => {
-
   return (
     <Layout>
-      <div className="container mx-auto px-4 pt-24 pb-12 z-[-3]">
-        <div className="max-w-6xl mx-auto">
-          {/* Hero Section */}
-          <div className="text-center mb-16">
-            <h1 className="text-5xl md:text-6xl text-resume-primary dark:text-resume-secondary mb-6">
-              About{" "}
-              <GradientText
-                colors={["#9BBD67", "#26C168", "#92C8C0", "#4079ff", "#E3F1E8"]}
-                animationSpeed={10}
-                showBorder={false}
-                className="text-5xl md:text-6xl  inline"
-              >
-                ResumeAI
-              </GradientText>
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              Your AI-powered career companion for creating standout resumes, analyzing compatibility, and tracking applications—all in one place.
-            </p>
+      <div className="bg-ink pt-16">
+        {/* Hero */}
+        <section className="relative overflow-hidden px-6 pb-16 pt-20">
+          {/* The same overhead wash the landing hero uses. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 -top-40 h-96 bg-[radial-gradient(50%_60%_at_50%_0%,rgba(255,255,255,0.08)_0%,transparent_70%)]"
+          />
+          <div className="relative mx-auto max-w-3xl text-center">
+            <FadeUp delay={0.05}>
+              <TwoTone
+                as="h1"
+                parts={["Resumes get read by software ", dim("before a person ever sees them")]}
+                className="text-3xl sm:text-[2.9rem]"
+              />
+            </FadeUp>
+            <FadeUp delay={0.1}>
+              <p className="mx-auto mt-6 max-w-xl text-pretty text-sm leading-relaxed text-mute-dim">
+                ResumeAI exists because that first reader is a parser, and almost
+                nothing about writing a good resume prepares you for it. These
+                tools show you what it extracts, score the gap against a real job
+                description, and help you close it.
+              </p>
+            </FadeUp>
           </div>
+        </section>
 
-          {/* Mission & Values Grid */}
-          <div className="grid md:grid-cols-2 gap-8 mb-20 relative pb-24">
-            <GlowingCards
-              enableGlow={true}
-              glowRadius={25}
-              glowOpacity={0.6}
-              animationDuration={500}
-            >
-              <GlowingCard
-                glowColor='#4079ff'
-                className="p-6 border-t-4 transition-all duration-300 hover:shadow-2xl h-[300px]">
-                <div className="text-4xl mb-4">🎯</div>
-                <h3 className="text-2xl  text-resume-primary dark:text-resume-secondary mb-4">
-                  Our Mission
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                  To empower new grads and college students who are job seekers worldwide with AI-driven tools that simplify resume creation, enhance job application success, and foster career growth.
-                </p>
-              </GlowingCard >
-            </GlowingCards>
-
-            <GlowingCards
-              enableGlow={true}
-              glowRadius={25}
-              glowOpacity={0.6}
-              animationDuration={500}
-            >
-              <GlowingCard
-                glowColor='#d6b354'
-                className="p-6 border-t-4 transition-all duration-300 hover:shadow-2xl h-[300px]">
-                <div className="text-4xl mb-4">🔒</div>
-                <h3 className="text-2xl  text-resume-primary dark:text-resume-secondary mb-4">
-                  Privacy First
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                  None of your resume data is stored permanently. All uploads and analyses are processed securely in-memory and deleted immediately after your session ends. Only the application tracking data you choose to save is stored, and it's protected with industry-standard encryption.
-                </p>
-              </GlowingCard>
-            </GlowingCards>
-            {/* Gradient Border Bottom */}
-            <div
-              className="absolute bottom-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-    dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
-            />
+        {/* Principles */}
+        <section className="relative px-6 pb-24">
+          <SectionHead
+            badge="How it is built"
+            parts={["Four things that ", dim("do not change")]}
+            className="mb-14"
+          />
+          <div className="mx-auto grid w-full max-w-5xl gap-4 sm:grid-cols-2">
+            {PRINCIPLES.map((p, i) => (
+              <FadeUp key={p.title} delay={i * 0.05}>
+                <Card className="h-full p-6">
+                  <h3 className="text-[0.95rem] font-medium text-white">{p.title}</h3>
+                  <p className="mt-2 text-pretty text-[0.82rem] leading-relaxed text-mute-dim">
+                    {p.body}
+                  </p>
+                </Card>
+              </FadeUp>
+            ))}
           </div>
+        </section>
 
-          {/* How It Works */}
-          <div className="mb-20 pb-24 relative">
-            <h2 className="text-3xl  text-center text-resume-primary dark:text-resume-secondary mb-12">
-              How It Works
-            </h2>
-            <div className="grid md:grid-cols-5 gap-6">
-              {[
-                { step: "1", title: "Analyze", desc: "Upload & get AI insights"},
-                { step: "2", title: "Build", desc: "Create optimized resume"},
-                { step: "3", title: "Apply", desc: "Submit with confidence"},
-                { step: "4", title: "Track", desc: "Monitor applications"},
-                { step: "5", title: "Succeed", desc: "Land your dream job"}
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className="group relative bg-white dark:bg-black rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2 hover:border-[#26C168]"
-                >
-                  <div className="text-sm font-semibold text-[#4079ff] mb-2">
-                    Step {item.step}
-                  </div>
-                  <div className="text-lg  text-resume-primary dark:text-resume-secondary mb-2">
-                    {item.title}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {item.desc}
+        {/* Steps */}
+        <section className="relative px-6 pb-24">
+          <SectionHead
+            badge="The loop"
+            parts={["Read it, ", dim("fix it, send it, track it")]}
+            className="mb-14"
+          />
+          <div className="mx-auto grid w-full max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((s, i) => (
+              <FadeUp key={s.n} delay={i * 0.05}>
+                <Card className="h-full p-6">
+                  <span className="block text-[0.7rem] tabular-nums tracking-[0.18em] text-mute-faint">
+                    {s.n}
+                  </span>
+                  <h3 className="mt-3 text-[0.95rem] font-medium text-white">{s.title}</h3>
+                  <p className="mt-1.5 text-pretty text-[0.82rem] leading-relaxed text-mute-dim">
+                    {s.body}
+                  </p>
+                </Card>
+              </FadeUp>
+            ))}
+          </div>
+        </section>
+
+        {/* Who built it, and the coffee */}
+        <section className="relative px-6 pb-24">
+          <SectionHead
+            badge="Support"
+            parts={["Built by one person, ", dim("kept free by choice")]}
+            className="mb-14"
+          />
+
+          <FadeUp>
+            <Card className="mx-auto w-full max-w-5xl overflow-hidden">
+              <div className="grid gap-8 p-7 sm:p-9 lg:grid-cols-[1.4fr_auto] lg:items-center lg:gap-12">
+                <div>
+                  <h3 className="text-[1.05rem] font-medium text-white">
+                    Hi, I am Rahul.
+                  </h3>
+                  <p className="mt-3 text-pretty text-[0.85rem] leading-relaxed text-mute-dim">
+                    I am a computer science student who got tired of guessing why
+                    applications disappeared, so I built the thing I wanted: a way
+                    to see the resume the way the software does. ResumeAI runs on
+                    free tiers end to end, which is what keeps it free to use - and
+                    also what caps how much it can do in a day.
+                  </p>
+                  <p className="mt-3 text-pretty text-[0.85rem] leading-relaxed text-mute-dim">
+                    If it saved you an afternoon, a coffee covers a little of the
+                    running cost and a lot of the motivation. Scan to pay over UPI.
+                    There is no paid tier and nothing is gated behind this.
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap items-center gap-2">
+                    {LINKS.map(({ Icon, href, label }) => (
+                      <a
+                        key={label}
+                        href={href}
+                        {...(href.startsWith("mailto:")
+                          ? {}
+                          : { target: "_blank", rel: "noopener noreferrer" })}
+                        className="inline-flex items-center gap-2 rounded-full border border-line-strong px-3.5 py-1.5 text-[0.78rem] font-medium text-mute transition-colors duration-300 hover:border-line-bright hover:text-white"
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                      </a>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-            {/* Gradient Border Bottom */}
-            <div
-              className="absolute bottom-0 left-0 right-0 h-px bg-[linear-gradient(to_right,transparent_0%,rgba(203,213,225,0.5)_20%,rgba(203,213,225,1)_50%,rgba(203,213,225,0.5)_80%,transparent_100%)]
-    dark:bg-[linear-gradient(to_right,transparent_0%,rgba(100,116,139,0.3)_20%,rgba(100,116,139,0.6)_50%,rgba(100,116,139,0.3)_80%,transparent_100%)]"
-            />
-          </div>
 
-          {/* CTA Section */}
-          <div className="text-center gradient-bg rounded-2xl p-12 shadow-2xl">
-            <h2 className="text-3xl md:text-4xl text-white mb-4">
-              Ready to Transform Your Job Search?
-            </h2>
-            <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-              Join us today and take the first step towards landing your dream job with ResumeAI.
-            </p>
-            <Link to='/analyzer'>
-              <button className="bg-white text-resume-primary px-8 py-4 rounded-lg  text-lg hover:shadow-2xl hover:scale-105 transition-all duration-300">
-                Get Started Free →
-              </button>
-            </Link>
-          </div>
-        </div>
+                {/* The QR is the one place a photographic surface appears, so it
+                    gets a white card to sit on - a dark QR on a dark panel is
+                    harder for a phone camera to lock onto. */}
+                <figure className="mx-auto w-full max-w-[14rem] shrink-0">
+                  <div className="rounded-xl border border-line-strong bg-white p-3">
+                    <img
+                      src="/Rahul_UPI_QR.png"
+                      alt="UPI QR code to send a tip to Rahul"
+                      width={400}
+                      height={400}
+                      loading="lazy"
+                      className="block h-auto w-full rounded-md"
+                    />
+                  </div>
+                  <figcaption className="mt-4 flex items-center justify-center gap-2 text-white">
+                    <Coffee className="h-5 w-5 shrink-0" strokeWidth={1.8} />
+                    <span className="text-[0.95rem] font-medium">Buy me a coffee</span>
+                  </figcaption>
+                </figure>
+              </div>
+            </Card>
+          </FadeUp>
+        </section>
+
+        {/* CTA */}
+        <section className="relative px-6 pb-28">
+          <FadeUp>
+            <Card className="mx-auto w-full max-w-5xl p-10 text-center sm:p-14">
+              <TwoTone
+                parts={["See what a parser ", dim("makes of your resume")]}
+                className="mx-auto max-w-xl text-2xl sm:text-[2rem]"
+              />
+              <p className="mx-auto mt-4 max-w-md text-pretty text-sm leading-relaxed text-mute-dim">
+                No account, no card. Upload a PDF and read the score in under a
+                minute.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Button to="/analyzer">
+                  Analyze a resume
+                  <Arrow />
+                </Button>
+                <Button to="/builder" variant="ghost">
+                  Open the builder
+                </Button>
+              </div>
+            </Card>
+          </FadeUp>
+        </section>
       </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </Layout>
   );
 };

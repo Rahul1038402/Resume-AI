@@ -84,6 +84,39 @@ def check_rate_limit(section: str) -> tuple[bool, dict]:
         'remaining_session': max(0, SESSION_LIMIT - totals['session'])
     }
 
+def peek_rate_limit(section: str) -> dict:
+    """What is left, without spending any of it.
+
+    The interface used to assume a fresh 15 whenever the assistant mounted,
+    which is wrong the moment someone switches sections and comes back: the
+    server has been counting all along, so the panel claimed a full allowance
+    while the real one was nearly gone. Reading the counters without touching
+    them lets the UI show the number the server will actually enforce.
+    """
+    client = get_client_key()
+    current_time = datetime.now()
+    prune_expired_counts(current_time)
+
+    section_used = user_request_counts.get(f"{client}:{section}", {}).get('section', 0)
+    session_used = user_session_counts.get(client, {}).get('session', 0)
+
+    return {
+        'section': section,
+        'section_limit': SECTION_LIMIT,
+        'session_limit': SESSION_LIMIT,
+        'remaining_section': max(0, SECTION_LIMIT - section_used),
+        'remaining_session': max(0, SESSION_LIMIT - session_used),
+    }
+
+
+@ai_bp.route('/limits/<section>', methods=['GET'])
+def get_limits(section):
+    """Current allowance for one section. Costs nothing and spends nothing."""
+    if section not in ('projects', 'summary', 'skills', 'experience', 'education'):
+        return jsonify({'error': 'Unknown section'}), 404
+    return jsonify(peek_rate_limit(section))
+
+
 def stream_ai_response(messages, prompt_class, section):
     """Generic streaming handler"""
     def generate():

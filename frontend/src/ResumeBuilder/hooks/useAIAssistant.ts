@@ -1,7 +1,53 @@
-import { useState, useCallback, useRef } from 'react';
-import { AIMessage, AIAssistantState } from '../components/AIAssistant/types';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { AIMessage, AIAssistantState, SuggestionOutcome } from '../components/AIAssistant/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+/*
+ * Conversations survive a section switch.
+ *
+ * This hook mounts inside the section being edited, so moving from Summary to
+ * Projects unmounts it and took the whole conversation with it. The key is
+ * the one useConversationHistory already writes, so Export still finds it.
+ */
+const STORAGE_PREFIX = 'ai_conversation_';
+const MAX_STORED_MESSAGES = 50;
+
+const loadMessages = (section: string): AIMessage[] => {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${section}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Timestamps come back from JSON as strings and have to become Dates.
+    const stored = parsed as Array<Omit<AIMessage, 'timestamp'> & { timestamp: string }>;
+    return stored.map(m => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    // Private browsing, cleared storage, or a half-written value. An empty
+    // conversation is a worse outcome than a crash only if it crashes.
+    return [];
+  }
+};
+
+const saveMessages = (section: string, messages: AIMessage[]) => {
+  try {
+    localStorage.setItem(
+      `${STORAGE_PREFIX}${section}`,
+      JSON.stringify(messages.slice(-MAX_STORED_MESSAGES))
+    );
+  } catch {
+    /* quota or disabled storage - the conversation still works in memory */
+  }
+};
+
+/*
+ * Last known allowance per section, for this page load.
+ *
+ * Without it the panel paints a fresh "15 of 15" every time the assistant
+ * mounts and then corrects itself when the server answers. The server is
+ * still the authority; this only stops the wrong number being shown first.
+ */
+const limitsCache: Record<string, { remaining_section: number; remaining_session: number }> = {};
 
 interface UseAIAssistantProps {
   section: 'projects' | 'experience' | 'education' | 'summary' | 'skills';
@@ -18,16 +64,61 @@ interface UseAIAssistantProps {
 }
 
 export const useAIAssistant = ({ section, resumeContext, sessionId = 'default' }: UseAIAssistantProps) => {
-  const [state, setState] = useState<AIAssistantState>({
-    messages: [],
+  const [state, setState] = useState<AIAssistantState>(() => ({
+    messages: loadMessages(section),
     isLoading: false,
     error: null,
     currentSuggestion: null,
-    rateLimits: {
+    rateLimits: limitsCache[section] ?? {
       remaining_section: 15,
       remaining_session: 50
     }
-  });
+  }));
+
+  // Reload when the section changes, in case the hook was reused rather than
+  // remounted. Switching sections must never show another section's chat.
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      messages: loadMessages(section),
+      currentSuggestion: null,
+      error: null,
+      rateLimits: limitsCache[section] ?? prev.rateLimits,
+    }));
+  }, [section]);
+
+  // Persist on every change, so a switch away loses nothing.
+  useEffect(() => {
+    saveMessages(section, state.messages);
+  }, [section, state.messages]);
+
+  /*
+   * Ask the server what is actually left.
+   *
+   * The counters live on the server and keep counting whether or not this
+   * component is mounted, so a locally assumed 15 was simply wrong after the
+   * first switch away and back. This spends nothing.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${API_URL}/api/ai-assist/limits/${section}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (cancelled || !data) return;
+        const limits = {
+          remaining_section: data.remaining_section,
+          remaining_session: data.remaining_session,
+        };
+        limitsCache[section] = limits;
+        setState(prev => ({ ...prev, rateLimits: limits }));
+      })
+      .catch(() => {
+        /* offline or backend down - the optimistic value stands until a send */
+      });
+
+    return () => { cancelled = true; };
+  }, [section]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastSuggestionIdRef = useRef<string | null>(null);
@@ -198,13 +289,12 @@ export const useAIAssistant = ({ section, resumeContext, sessionId = 'default' }
                 }
               }
             } else if (data.type === 'rate_limit') {
-              setState(prev => ({
-                ...prev,
-                rateLimits: {
-                  remaining_section: data.data.remaining_section,
-                  remaining_session: data.data.remaining_session
-                }
-              }));
+              const limits = {
+                remaining_section: data.data.remaining_section,
+                remaining_session: data.data.remaining_session
+              };
+              limitsCache[section] = limits;
+              setState(prev => ({ ...prev, rateLimits: limits }));
             } else if (data.type === 'done') {
               setState(prev => ({ ...prev, isLoading: false }));
             } else if (data.type === 'error') {
@@ -238,22 +328,49 @@ export const useAIAssistant = ({ section, resumeContext, sessionId = 'default' }
   }, []);
 
   // Clear all messages
+  /*
+   * Leave a receipt in the transcript.
+   *
+   * Clearing `currentSuggestion` is what makes the card disappear, and on its
+   * own that erased every trace that a suggestion was ever made - the chat
+   * ended on "Here is your summary" with nothing to show for it. Recording
+   * the outcome as a message means it persists with the rest of the
+   * conversation, including across a section switch.
+   */
+  const recordSuggestionOutcome = useCallback((outcome: SuggestionOutcome) => {
+    setState(prev => ({
+      ...prev,
+      currentSuggestion: null,
+      messages: [
+        ...prev.messages,
+        {
+          id: `${Date.now()}-outcome`,
+          role: 'system',
+          content: outcome.preview,
+          timestamp: new Date(),
+          outcome,
+        },
+      ],
+    }));
+  }, []);
+
   const clearMessages = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     lastSuggestionIdRef.current = null;
-    setState({
+    saveMessages(section, []);
+    // The allowance is carried over deliberately. Deleting a conversation
+    // does not give the requests back, and showing a full 15 here was the
+    // same lie the panel used to tell after a section switch.
+    setState(prev => ({
       messages: [],
       isLoading: false,
       error: null,
       currentSuggestion: null,
-      rateLimits: {
-        remaining_section: 15,
-        remaining_session: 50
-      }
-    });
-  }, []);
+      rateLimits: prev.rateLimits
+    }));
+  }, [section]);
 
   // Cancel ongoing request
   const cancelRequest = useCallback(() => {
@@ -277,13 +394,9 @@ export const useAIAssistant = ({ section, resumeContext, sessionId = 'default' }
         })
       });
 
-      setState(prev => ({
-        ...prev,
-        rateLimits: {
-          remaining_section: 15,
-          remaining_session: 50
-        }
-      }));
+      const limits = { remaining_section: 15, remaining_session: 50 };
+      limitsCache[section] = limits;
+      setState(prev => ({ ...prev, rateLimits: limits }));
     } catch (error) {
       console.error('Failed to reset limits:', error);
     }
@@ -297,6 +410,7 @@ export const useAIAssistant = ({ section, resumeContext, sessionId = 'default' }
     rateLimits: state.rateLimits,
     sendMessage,
     setSuggestion,
+    recordSuggestionOutcome,
     clearMessages,
     cancelRequest,
     resetRateLimits

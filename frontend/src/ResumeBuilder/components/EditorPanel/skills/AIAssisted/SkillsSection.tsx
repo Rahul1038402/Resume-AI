@@ -63,6 +63,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
         rateLimits,
         sendMessage,
         setSuggestion,
+        recordSuggestionOutcome,
         clearMessages,
         cancelRequest
     } = useAIAssistant({
@@ -78,14 +79,24 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
     });
 
     // Handle accepting AI suggestion
+    const skillsPreview = () =>
+        currentSuggestion && 'skills' in currentSuggestion
+            ? currentSuggestion.skills.map(c => c.name).join(', ')
+            : '';
+
     const handleAcceptSuggestion = (editedCategories: SkillCategory[]) => {
-        setSuggestion(null);
+        recordSuggestionOutcome({
+            status: 'accepted', label: 'Skills',
+            preview: editedCategories.map(c => c.name).join(', '),
+        });
         replaceAllSkillCategories(editedCategories);
     };
 
     // Handle rejecting suggestion
     const handleRejectSuggestion = () => {
-        setSuggestion(null);
+        recordSuggestionOutcome({
+            status: 'rejected', label: 'Skills', preview: skillsPreview(),
+        });
     };
 
     // Handle refinement requests
@@ -98,12 +109,14 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
             prioritize: "Can you reorganize these skills putting the most important ones first?"
         };
 
-        setSuggestion(null);
+        recordSuggestionOutcome({
+            status: 'refined', label: 'Skills', preview: skillsPreview(),
+        });
         sendMessage(refinementPrompts[refinementType] || refinementPrompts.prioritize);
     };
 
     return (
-        <div className="space-y-4">
+        <div className="flex h-full min-h-0 flex-col gap-4">
             {/* AI Mode Toggle */}
             <AIModeToggle
                 mode={mode}
@@ -113,7 +126,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
 
             {/* AI Mode Interface */}
             {isAIMode && (
-                <div className="space-y-4">
+                <div className="min-h-0 flex-1">
                     <AIChatInterface
                         messages={messages}
                         isLoading={isLoading}
@@ -136,12 +149,16 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
 
             {/* Manual Mode Interface */}
             {!isAIMode && (
-                <SkillsEditor
-                    skills={skills}
-                    addSkillCategory={addSkillCategory}
-                    updateSkillCategory={updateSkillCategory}
-                    deleteSkillCategory={deleteSkillCategory}
-                />
+                /* Manual mode scrolls inside the same fixed column, so the
+                   mode switch above stays put either way. */
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                    <SkillsEditor
+                        skills={skills}
+                        addSkillCategory={addSkillCategory}
+                        updateSkillCategory={updateSkillCategory}
+                        deleteSkillCategory={deleteSkillCategory}
+                    />
+                </div>
             )}
         </div>
     );

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Building, FileText, Clock, XCircle, Award, Globe, Search, Sparkles } from 'lucide-react';
+import { Plus, Calendar, Building, FileText, Clock, XCircle, Award, Globe, Search, Loader2, Pencil, Trash2, Inbox } from 'lucide-react';
 import Layout from '@/components/common/Layout';
-import GradientText from '@/components/ui/GradientText';
 import '../index.css'
 import { supabase } from '../lib/supabaseClient'
 import Loader from '@/components/common/Loader';
@@ -19,6 +18,7 @@ const JobTracker = () => {
     const [sortBy, setSortBy] = useState('');
     const [viewMode, setViewMode] = useState('timeline');
     const [draggedItem, setDraggedItem] = useState(null);
+    const [dragOver, setDragOver] = useState<string | null>(null);
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const [showSortDropdown, setShowSortDropdown] = useState(false);
     const statusRef = useRef<HTMLDivElement>(null);
@@ -34,11 +34,17 @@ const JobTracker = () => {
         description: ''
     });
 
+    /*
+     * Four states on a monochrome page. An offer is the one thing worth
+     * shouting about, so it gets white - the only accent the theme has. The
+     * two middle states are greys a step apart, and a rejection is the single
+     * place red is allowed. The icons carry the rest of the distinction.
+     */
     const statusOptions = [
-        { value: 'applied', label: 'Applied', icon: Clock, color: 'text-blue-600 dark:text-blue-400' },
-        { value: 'in_progress', label: 'In Progress', icon: Calendar, color: 'text-yellow-600 dark:text-yellow-400' },
-        { value: 'got_offer', label: 'Got Offer', icon: Award, color: 'text-green-600 dark:text-green-400' },
-        { value: 'not_selected', label: 'Not Selected', icon: XCircle, color: 'text-red-600 dark:text-red-400' }
+        { value: 'applied', label: 'Applied', icon: Clock, color: 'text-mute', chip: 'border-line-strong text-mute' },
+        { value: 'in_progress', label: 'In Progress', icon: Calendar, color: 'text-white', chip: 'border-line-strong bg-white/[0.04] text-mute' },
+        { value: 'got_offer', label: 'Got Offer', icon: Award, color: 'text-white', chip: 'border-line-bright bg-white/10 text-white' },
+        { value: 'not_selected', label: 'Not Selected', icon: XCircle, color: 'text-red-300', chip: 'border-red-500/30 bg-red-500/[0.06] text-red-200' }
     ];
 
     const platformOptions = [
@@ -184,9 +190,15 @@ const JobTracker = () => {
 
     const fetchApplications = async () => {
         try {
+            // Filtered here as well as by RLS. The policy is the real
+            // boundary, but it lives in Supabase rather than in this repo, so
+            // a query that relies on it alone gives no sign when it is wrong.
+            if (!user?.id) return;
+
             const { data, error } = await supabase
                 .from('job_applications')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('date_applied', { ascending: false });
 
             if (error) throw error;
@@ -224,11 +236,16 @@ const JobTracker = () => {
 
                 if (uploadError) throw uploadError;
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('resumes')
-                    .getPublicUrl(fileName);
-
-                resumeUrl = publicUrl;
+                /*
+                 * Store the path, not a public URL.
+                 *
+                 * getPublicUrl produced a link that works without any
+                 * credentials, which is only meaningful if the bucket is
+                 * public - and a bucket of resumes should not be. The path is
+                 * signed on demand instead, so a link is good for a minute
+                 * and only for someone who is signed in as the owner.
+                 */
+                resumeUrl = fileName;
             }
 
             const applicationData = {
@@ -259,6 +276,36 @@ const JobTracker = () => {
             fetchApplications();
         } catch (error) {
             alert('Error saving application: ' + error.message);
+        }
+    };
+
+    /*
+     * Resume links.
+     *
+     * Rows written before the bucket was closed hold a full public URL rather
+     * than a path, so the path is recovered from it. Both shapes work and
+     * nothing needs backfilling.
+     */
+    const storagePath = (stored) => {
+        const marker = '/resumes/';
+        const at = stored.indexOf(marker);
+        return at === -1 ? stored : stored.slice(at + marker.length);
+    };
+
+    const openResume = async (stored) => {
+        // Opened synchronously on the click, then pointed at the signed URL -
+        // a window.open after an await is treated as a popup and blocked.
+        const tab = window.open('', '_blank', 'noopener,noreferrer');
+        try {
+            const { data, error } = await supabase.storage
+                .from('resumes')
+                .createSignedUrl(storagePath(stored), 60);
+
+            if (error || !data?.signedUrl) throw error || new Error('No link returned');
+            if (tab) tab.location.href = data.signedUrl;
+        } catch (error) {
+            tab?.close();
+            alert('Could not open that resume: ' + error.message);
         }
     };
 
@@ -332,6 +379,7 @@ const JobTracker = () => {
             }
         }
         setDraggedItem(null);
+        setDragOver(null);
     };
 
     // Loader while the Supabase session is being restored
@@ -343,33 +391,28 @@ const JobTracker = () => {
 
     if (!user) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="bg-card p-8 rounded-lg shadow-lg max-w-md w-full mx-4 border border-border">
+            <div className="flex min-h-screen items-center justify-center px-4">
+                <div className="w-full max-w-sm rounded-xl border border-line bg-ink-card p-8">
                     <div className="text-center">
-                        <GradientText
-                            colors={["#9BBD67", "#26C168", "#92C8C0", "#4079ff", "#E3F1E8"]}
-                            animationSpeed={10}
-                            showBorder={false}
-                            className="text-4xl"
-                        >
-                            ResumeAI
-                        </GradientText>
-                        <p className="text-muted-foreground mb-8">Track your job applications efficiently</p>
+                        <h1 className="text-[1.6rem] font-medium tracking-[-0.01em] text-white">
+                            Application tracker
+                        </h1>
+                        <p className="mx-auto mt-2 max-w-xs text-[0.8rem] leading-relaxed text-mute-dim">
+                            Every application in one place, with the status of each.
+                            Sign in to keep your list.
+                        </p>
                         <button
                             onClick={signInWithGoogle}
-                            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-gray-50/10 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-gray-100/30 text-gray-800 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50"
+                            className="mt-7 flex w-full items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2.5 text-[0.85rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90 disabled:opacity-50"
                         >
                             {loading ? (
                                 <>
-                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Signing in...
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Signing in
                                 </>
                             ) : (
                                 <>
-                                    <svg width="20" height="20" viewBox="0 0 24 24">
+                                    <svg width="18" height="18" viewBox="0 0 24 24">
                                         <path
                                             fill="#4285F4"
                                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -399,162 +442,88 @@ const JobTracker = () => {
 
     return (
         <Layout>
-            <div className="pt-28 bg-background">
-                <div className="text-center mb-4">
-                    <GradientText
-                        colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
-                        animationSpeed={11}
-                        showBorder={false}
-                        className="text-5xl"
-                    >
-                        <p className="mb-5">
-                            Job Application Tracker
-                        </p>
-                    </GradientText>
-                </div>
+            <div className="min-h-screen bg-ink pt-24 pb-20">
+                {/*
+                  One container for the whole page. The heading, the Gmail
+                  panel and the board each used to set their own width
+                  (full-bleed, max-w-7xl, max-w-[100rem]), so no two edges on
+                  the page lined up with each other.
+                */}
+                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6">
 
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <GmailSyncManager
-                        user={user}
-                        onApplicationsImported={fetchApplications}
-                    />
-                </main>
-
-                <main className="max-w-[100rem] min-h-screen mx-2 px-4 sm:px-6 lg:px-8 pt-8 mb-14  border border-gray-300 dark:border-gray-800 rounded-xl">
-                    <div className="flex flex-col lg:flex-row justify-between items-center gap-4 pb-8">
-                        {/* Left: View Toggle */}
-                        <div className="flex items-center gap-2">
-                            <p>View Mode:</p>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setViewMode('timeline')}
-                                    className={`px-4 py-2 rounded-lg transition ${viewMode === 'timeline'
-                                        ? 'bg-resume-primary dark:bg-resume-secondary text-white dark:text-black'
-                                        : 'bg-muted text-muted-foreground'
-                                        }`}
-                                >
-                                    Timeline
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className={`px-4 py-2 rounded-lg transition ${viewMode === 'grid'
-                                        ? 'bg-resume-primary dark:bg-resume-secondary text-white dark:text-black'
-                                        : 'bg-muted text-muted-foreground'
-                                        }`}
-                                >
-                                    Grid
-                                </button>
-
-                            </div>
+                    {/* A tool's header, not a landing page's: the title and the
+                        one action you came to perform, on a single line. */}
+                    <header className="flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <h1 className="text-[1.75rem] font-medium leading-tight tracking-[-0.02em] text-white">
+                                Applications
+                            </h1>
+                            <p className="mt-1 text-[0.8rem] font-medium text-mute-dim">
+                                Every role you have applied for, and where each one stands.
+                            </p>
                         </div>
 
-                        {/* Right: Add Button */}
                         <button
                             onClick={() => setShowForm(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-resume-primary dark:bg-resume-secondary hover:bg-resume-primary/90 hover:dark:bg-resume-secondary/80 text-white dark:text-black rounded-lg transition whitespace-nowrap"
+                            className="flex items-center gap-2 whitespace-nowrap rounded-md bg-white px-3.5 py-2 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90"
                         >
-                            <Plus className="w-4 h-4" />
-                            Add Application
+                            <Plus className="h-4 w-4" strokeWidth={1.8} />
+                            Add application
                         </button>
+                    </header>
+
+                    {/* The five counts as one quiet strip rather than five
+                        cards: they are a readout, not the content. */}
+                    <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-line py-3">
+                        {[
+                            { label: 'Total', value: stats.total, Icon: Building, tone: 'text-mute-faint' },
+                            { label: 'Applied', value: stats.applied, Icon: Clock, tone: 'text-mute-faint' },
+                            { label: 'In progress', value: stats.in_progress, Icon: Calendar, tone: 'text-mute-faint' },
+                            { label: 'Offers', value: stats.got_offer, Icon: Award, tone: 'text-white' },
+                            { label: 'Not selected', value: stats.not_selected, Icon: XCircle, tone: 'text-red-300/70' },
+                        ].map(({ label, value, Icon, tone }) => (
+                            <div key={label} className="flex items-center gap-2">
+                                <Icon className={`h-3.5 w-3.5 shrink-0 ${tone}`} strokeWidth={1.6} />
+                                <span className="text-[0.95rem] font-medium tabular-nums text-white">{value}</span>
+                                <span className="text-[0.75rem] font-medium text-mute-dim">{label}</span>
+                            </div>
+                        ))}
                     </div>
 
-
-                    {/* Stats Dashboard */}
-                    <div className="grid grid-cols-2 custom:grid-cols-5 gap-4 mb-8">
-                        <div className="bg-card rounded-lg p-4 shadow-sm border border-border">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Total</p>
-                                    <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                                </div>
-                                <Building className="w-8 h-8 text-muted-foreground" />
-                            </div>
-                        </div>
-
-                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 shadow-sm border border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-blue-600 dark:text-blue-400">Applied</p>
-                                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{stats.applied}</p>
-                                </div>
-                                <Clock className="w-8 h-8 text-blue-500" />
-                            </div>
-                        </div>
-
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 shadow-sm border border-yellow-200 dark:border-yellow-800">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-yellow-600 dark:text-yellow-400">In Progress</p>
-                                    <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{stats.in_progress}</p>
-                                </div>
-                                <Calendar className="w-8 h-8 text-yellow-500" />
-                            </div>
-                        </div>
-
-                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 shadow-sm border border-green-200 dark:border-green-800">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-green-600 dark:text-green-400">Got Offer</p>
-                                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">{stats.got_offer}</p>
-                                </div>
-                                <Award className="w-8 h-8 text-green-500" />
-                            </div>
-                            {stats.got_offer > 0 && (
-                                <div className="mt-2 flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                    <Sparkles className="w-3 h-3" />
-                                    <span className="font-medium">Congratulations! 🎉</span>
-                                </div>
-                            )}
-                            {stats.got_offer === 0 && (
-                                <p className="mt-2 text-xs text-muted-foreground">Keep grinding! 💪</p>
-                            )}
-                        </div>
-
-                        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 shadow-sm border border-red-200 dark:border-red-800">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-red-600 dark:text-red-400">Not Selected</p>
-                                    <p className="text-2xl font-bold text-red-700 dark:text-red-300">{stats.not_selected}</p>
-                                </div>
-                                <XCircle className="w-8 h-8 text-red-500" />
-                            </div>
-                        </div>
+                    <div className="mt-5">
+                        <GmailSyncManager
+                            user={user}
+                            onApplicationsImported={fetchApplications}
+                        />
                     </div>
 
-                    {/* Controls */}
-                    <div className="rounded-lg p-4 shadow-sm mb-6">
-                        <div className="flex flex-col custom:flex-row gap-4">
-                            {/* Search */}
-                            <div className="flex-1">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by job role, company, or platform..."
-                                        value={searchQuery}
-                                        onChange={(e) => handleSearchChange(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-4 bg-background rounded-md border
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
-                                    />
-                                </div>
-                            </div>
+                    {/* Search, filters, sort and the view switch on one row.
+                        These were three stacked rows of chrome before any
+                        application was visible. */}
+                    <div className="mt-5 flex flex-col gap-2.5 custom:flex-row custom:items-center">
+                        <div className="relative flex-1">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-faint" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                placeholder="Search by role, company or platform"
+                                className="rb-input h-9 pl-9"
+                            />
+                        </div>
 
+                        <div className="flex items-center gap-2.5">
                             {/* Status Filter */}
                             <div ref={statusRef} className="relative inline-block text-left">
                                 {/* Dropdown Button */}
                                 <button
                                     type="button"
                                     onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                                    className="inline-flex dark:text-gray-400 justify-between items-center p-4 bg-background rounded-md border
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="inline-flex h-9 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-md border border-line-strong bg-ink-soft px-3 text-[0.8rem] text-mute transition-colors duration-200 hover:border-line-bright hover:text-white focus:border-white/40 focus:outline-none"
                                 >
                                     {selectedStatuses.length > 0
                                         ? `${selectedStatuses.length} selected`
-                                        : 'Filter by Status'}
+                                        : 'Status'}
                                     <svg
                                         className={`w-4 h-4 ml-2 transition-transform ${showStatusDropdown ? 'rotate-180' : 'rotate-0'
                                             }`}
@@ -568,8 +537,8 @@ const JobTracker = () => {
 
                                 {/* Dropdown Menu */}
                                 {showStatusDropdown && (
-                                    <div className="absolute mt-2 w-56 bg-card border border-input rounded-lg shadow-lg z-50">
-                                        <ul className="max-h-60 overflow-y-auto py-2">
+                                    <div className="absolute z-50 mt-2 w-56 rounded-lg border border-line-strong bg-ink-raised py-1 shadow-xl shadow-black/40">
+                                        <ul className="max-h-60 overflow-y-auto">
                                             {statusOptions.map((option) => (
                                                 <li
                                                     key={option.value}
@@ -580,9 +549,9 @@ const JobTracker = () => {
                                                             setSelectedStatuses([...selectedStatuses, option.value]);
                                                         }
                                                     }}
-                                                    className={`px-4 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground ${selectedStatuses.includes(option.value)
-                                                        ? 'bg-accent text-accent-foreground'
-                                                        : ''
+                                                    className={`cursor-pointer px-3.5 py-2 text-[0.8rem] transition-colors duration-150 hover:bg-white/[0.06] hover:text-white ${selectedStatuses.includes(option.value)
+                                                        ? 'bg-white/[0.06] text-white'
+                                                        : 'text-mute'
                                                         }`}
                                                 >
                                                     {selectedStatuses.includes(option.value) ? '✓ ' : ''}{option.label}
@@ -592,20 +561,15 @@ const JobTracker = () => {
                                     </div>
                                 )}
                             </div>
-
-
                             {/* Sort */}
                             <div ref={sortRef} className="relative inline-block text-left">
                                 {/* Dropdown Button */}
                                 <button
                                     type="button"
                                     onClick={() => setShowSortDropdown(!showSortDropdown)}
-                                    className="inline-flex dark:text-gray-400 justify-between items-center p-4 bg-background rounded-md border
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                    className="inline-flex h-9 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-md border border-line-strong bg-ink-soft px-3 text-[0.8rem] text-mute transition-colors duration-200 hover:border-line-bright hover:text-white focus:border-white/40 focus:outline-none"
                                 >
-                                    {sortBy ? sortOptions.find(o => o.value === sortBy)?.label : 'Sort by'}
+                                    {sortBy ? sortOptions.find(o => o.value === sortBy)?.label : 'Sort'}
                                     <svg
                                         className={`w-4 h-4 ml-2 transition-transform ${showSortDropdown ? 'rotate-180' : 'rotate-0'
                                             }`}
@@ -619,8 +583,8 @@ const JobTracker = () => {
 
                                 {/* Dropdown Menu */}
                                 {showSortDropdown && (
-                                    <div className="absolute mt-2 w-44 bg-popover border border-input rounded-lg shadow-lg z-50">
-                                        <ul className="py-2">
+                                    <div className="absolute z-50 mt-2 w-44 rounded-lg border border-line-strong bg-ink-raised py-1 shadow-xl shadow-black/40">
+                                        <ul>
                                             {sortOptions.map((option) => (
                                                 <li
                                                     key={option.value}
@@ -628,7 +592,7 @@ const JobTracker = () => {
                                                         setSortBy(option.value);
                                                         setShowSortDropdown(false); // close after selecting one
                                                     }}
-                                                    className={`px-4 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground ${sortBy === option.value ? 'bg-accent text-accent-foreground' : ''
+                                                    className={`cursor-pointer px-3.5 py-2 text-[0.8rem] transition-colors duration-150 hover:bg-white/[0.06] hover:text-white ${sortBy === option.value ? 'bg-white/[0.06] text-white' : 'text-mute'
                                                         }`}
                                                 >
                                                     {sortBy === option.value ? '✓ ' : ''}{option.label}
@@ -639,19 +603,35 @@ const JobTracker = () => {
                                 )}
                             </div>
 
+                            <div className="flex items-center gap-1 rounded-md border border-line p-0.5">
+                                {(['timeline', 'grid'] as const).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setViewMode(mode)}
+                                        aria-pressed={viewMode === mode}
+                                        className={`rounded px-2.5 py-1.5 text-[0.8rem] capitalize transition-colors duration-200 ${viewMode === mode
+                                            ? 'bg-white/10 text-white'
+                                            : 'text-mute hover:text-white'
+                                            }`}
+                                    >
+                                        {mode}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+                    </div>
 
                         {/* Clear Filters */}
                         {(searchQuery || selectedStatuses.length > 0) && (
                             <div className="mt-4 flex items-center gap-2 text-sm flex-wrap">
                                 <span className="text-muted-foreground">Active filters:</span>
                                 {searchQuery && (
-                                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                                    <span className="rounded border border-line-strong px-2 py-0.5 text-[0.75rem] font-medium text-mute">
                                         Search: "{searchQuery}"
                                     </span>
                                 )}
                                 {selectedStatuses.map(status => (
-                                    <span key={status} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                                    <span key={status} className="rounded border border-line-strong px-2 py-0.5 text-[0.75rem] font-medium text-mute">
                                         {statusOptions.find(opt => opt.value === status)?.label}
                                     </span>
                                 ))}
@@ -660,246 +640,244 @@ const JobTracker = () => {
                                         setSearchQuery('');
                                         setSelectedStatuses([]);
                                     }}
-                                    className="ml-2 text-resume-primary dark:text-resume-secondary hover:underline"
+                                    className="ml-2 text-white underline-offset-4 hover:underline"
                                 >
                                     Clear all
                                 </button>
                             </div>
                         )}
-                    </div>
 
-                    {/* Timeline View */}
+                    {/* ---- Board ---- */}
                     {viewMode === 'timeline' && (
-                        <>
-                            <span className="text-gray-700 dark:text-gray-400 underline italic text-sm flex justify-center items-center mb-4">Drag and Drop to change status</span>
-                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-                                {statusOptions.map(statusOption => (
-                                    <div
+                        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            {statusOptions.map(statusOption => {
+                                const column = filteredApplications.filter(app => app.status === statusOption.value);
+                                return (
+                                    <section
                                         key={statusOption.value}
                                         onDragOver={handleDragOver}
+                                        onDragEnter={() => setDragOver(statusOption.value)}
+                                        onDragLeave={(e) => {
+                                            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
+                                        }}
                                         onDrop={(e) => handleDrop(e, statusOption.value)}
-                                        className="rounded-lg p-4 border-2 border-dashed border-border min-h-[300px]"
+                                        className={`rounded-xl border p-2.5 transition-colors duration-200 ${dragOver === statusOption.value
+                                            ? 'border-line-bright bg-white/[0.04]'
+                                            : 'border-line bg-ink-card/60'
+                                            }`}
                                     >
-                                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border">
-                                            <statusOption.icon className={`w-5 h-5 ${statusOption.color}`} />
-                                            <h3 className="font-semibold text-foreground">{statusOption.label}</h3>
-                                            <span className="ml-auto text-sm text-muted-foreground">
-                                                {filteredApplications.filter(app => app.status === statusOption.value).length}
+                                        <header className="flex items-center gap-2 px-1.5 pb-2.5">
+                                            <statusOption.icon className={`h-3.5 w-3.5 shrink-0 ${statusOption.color}`} strokeWidth={1.8} />
+                                            <h3 className="text-[0.8rem] font-medium text-white">{statusOption.label}</h3>
+                                            <span className="ml-auto text-[0.75rem] tabular-nums text-mute-faint">
+                                                {column.length}
                                             </span>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {filteredApplications
-                                                .filter(app => app.status === statusOption.value)
-                                                .map(app => (
-                                                    <div
-                                                        key={app.id}
-                                                        draggable
-                                                        onDragStart={(e) => handleDragStart(e, app)}
-                                                        className="bg-card rounded-lg p-3 cursor-move hover:shadow-md transition border border-border"
-                                                    >
-                                                        <h4 className="font-medium text-sm text-foreground mb-1">{app.job_role}</h4>
-                                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                            <Building className="w-3 h-3" />
-                                                            {app.company}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            {new Date(app.date_applied).toLocaleDateString()}
-                                                        </p>
-                                                        <div className="flex gap-2 pt-2">
+                                        </header>
+
+                                        <div className="space-y-2">
+                                            {column.map(app => (
+                                                <article
+                                                    key={app.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, app)}
+                                                    onDragEnd={() => setDragOver(null)}
+                                                    className="group cursor-grab rounded-lg border border-line bg-ink-soft p-3 transition-colors duration-200 hover:border-line-strong active:cursor-grabbing"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <h4 className="text-[0.85rem] leading-snug text-white">
+                                                            {app.job_role}
+                                                        </h4>
+                                                        <div className="flex shrink-0 gap-0.5">
                                                             <button
                                                                 onClick={() => handleEdit(app)}
-                                                                className="flex-1 px-3 py-2 bg-resume-primary/10 dark:bg-resume-secondary/10 text-resume-primary dark:text-resume-secondary rounded hover:bg-resume-primary/20 dark:hover:bg-resume-secondary/20 transition text-sm font-medium"
+                                                                aria-label={`Edit ${app.job_role}`}
+                                                                className="rounded p-1 text-mute-faint transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
                                                             >
-                                                                Edit
+                                                                <Pencil className="h-3 w-3" strokeWidth={1.8} />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDelete(app.id)}
-                                                                className="flex-1 px-3 py-2 bg-red-200 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition text-sm font-medium"
+                                                                aria-label={`Delete ${app.job_role}`}
+                                                                className="rounded p-1 text-mute-faint transition-colors duration-200 hover:bg-red-500/10 hover:text-red-400"
                                                             >
-                                                                Delete
+                                                                <Trash2 className="h-3 w-3" strokeWidth={1.8} />
                                                             </button>
                                                         </div>
                                                     </div>
 
-                                                ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
+                                                    <p className="mt-1 truncate text-[0.75rem] font-medium text-mute">
+                                                        {app.company}
+                                                    </p>
 
-                    {/* Grid View */}
-                    {viewMode === 'grid' && (
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredApplications.map((app) => {
-                                const statusOption = statusOptions.find(opt => opt.value === app.status);
-                                const StatusIcon = statusOption?.icon || Clock;
+                                                    <div className="mt-2.5 flex items-center justify-between gap-2 text-[0.7rem] font-medium text-mute-faint">
+                                                        <span className="truncate">{app.platform || '\u2014'}</span>
+                                                        <span className="shrink-0 tabular-nums">
+                                                            {new Date(app.date_applied).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                </article>
+                                            ))}
 
-                                return (
-                                    <div key={app.id} className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <h3 className="font-semibold text-lg text-resume-accent">{app.job_role}</h3>
-                                                <p className="text-muted-foreground flex items-center gap-1">
-                                                    <Building className="w-4 h-4" />
-                                                    {app.company}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <StatusIcon className={`w-5 h-5 ${statusOption?.color || 'text-muted-foreground'}`} />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2 mb-4">
-                                            {app.platform && (
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                    <Globe className="w-4 h-4" />
-                                                    Platform: {app.platform}
-                                                </div>
-                                            )}
-
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <Calendar className="w-4 h-4" />
-                                                Applied: {new Date(app.date_applied).toLocaleDateString()}
-                                            </div>
-
-                                            {app.resume_url && (
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <FileText className="w-4 h-4 text-muted-foreground" />
-                                                    <a
-                                                        href={app.resume_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-primary hover:text-primary/80 underline"
-                                                    >
-                                                        View Resume
-                                                    </a>
-                                                </div>
-                                            )}
-
-                                            <div className="flex items-center gap-2">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusOption?.value === 'applied' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                                                    statusOption?.value === 'in_progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                                                        statusOption?.value === 'got_offer' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                                                            'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                                                    }`}>
-                                                    <StatusIcon className="w-3 h-3" />
-                                                    {statusOption?.label}
-                                                </span>
-                                            </div>
-
-                                            {app.description && (
-                                                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                                                    {app.description}
+                                            {column.length === 0 && (
+                                                <p className="rounded-lg border border-dashed border-line px-3 py-6 text-center text-[0.75rem] font-medium text-mute-faint">
+                                                    Drop a card here
                                                 </p>
                                             )}
                                         </div>
-
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleEdit(app)}
-                                                className="flex-1 px-3 py-2 bg-resume-primary/10 dark:bg-resume-secondary/10 text-resume-primary dark:text-resume-secondary rounded hover:bg-resume-primary/20 dark:hover:bg-resume-secondary/20 transition text-sm font-medium"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(app.id)}
-                                                className="flex-1 px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition text-sm font-medium"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
+                                    </section>
                                 );
                             })}
                         </div>
                     )}
 
-                    {/* Empty State */}
-                    {filteredApplications.length === 0 && (
-                        <div className="text-center py-12">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-                                <FileText className="w-8 h-8 text-muted-foreground" />
+                    {viewMode === 'grid' && filteredApplications.length > 0 && (
+                        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            {filteredApplications.map((app) => {
+                                const statusOption = statusOptions.find(opt => opt.value === app.status);
+                                const StatusIcon = statusOption?.icon || Clock;
+
+                                return (
+                                    <article key={app.id} className="flex flex-col rounded-xl border border-line bg-ink-card p-4 transition-colors duration-200 hover:border-line-strong">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h3 className="truncate text-[0.95rem] text-white">{app.job_role}</h3>
+                                                <p className="mt-0.5 truncate text-[0.8rem] font-medium text-mute">
+                                                    {app.company}
+                                                </p>
+                                            </div>
+                                            <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.7rem] font-medium ${statusOption?.chip ?? 'border-line-strong text-mute'}`}>
+                                                <StatusIcon className="h-3 w-3" strokeWidth={1.8} />
+                                                {statusOption?.label}
+                                            </span>
+                                        </div>
+
+                                        {app.description && (
+                                            <p className="mt-3 line-clamp-2 text-[0.78rem] font-medium leading-relaxed text-mute-dim">
+                                                {app.description}
+                                            </p>
+                                        )}
+
+                                        <dl className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[0.72rem] font-medium text-mute-faint">
+                                            {app.platform && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <Globe className="h-3 w-3" strokeWidth={1.8} />
+                                                    <dd>{app.platform}</dd>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-1.5">
+                                                <Calendar className="h-3 w-3" strokeWidth={1.8} />
+                                                <dd className="tabular-nums">{new Date(app.date_applied).toLocaleDateString()}</dd>
+                                            </div>
+                                            {app.resume_url && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openResume(app.resume_url)}
+                                                    className="flex items-center gap-1.5 text-mute underline-offset-4 transition-colors hover:text-white hover:underline"
+                                                >
+                                                    <FileText className="h-3 w-3" strokeWidth={1.8} />
+                                                    Resume
+                                                </button>
+                                            )}
+                                        </dl>
+
+                                        <div className="mt-4 flex gap-2 border-t border-line pt-3">
+                                            <button
+                                                onClick={() => handleEdit(app)}
+                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-line-strong px-3 py-1.5 text-[0.78rem] font-medium text-white transition-colors duration-200 hover:border-line-bright hover:bg-white/[0.06]"
+                                            >
+                                                <Pencil className="h-3 w-3" strokeWidth={1.8} />
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(app.id)}
+                                                aria-label={`Delete ${app.job_role}`}
+                                                className="flex items-center justify-center rounded-md border border-line px-3 py-1.5 text-mute transition-colors duration-200 hover:border-red-500/40 hover:text-red-400"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+                                            </button>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Empty state: only when there is genuinely nothing to show.
+                        The timeline keeps its columns so the statuses stay
+                        visible as drop targets. */}
+                    {filteredApplications.length === 0 && viewMode === 'grid' && (
+                        <div className="mt-5 rounded-xl border border-line bg-ink-card px-6 py-14 text-center">
+                            <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg border border-line-strong bg-ink-soft">
+                                <Inbox className="h-5 w-5 text-mute" strokeWidth={1.6} />
                             </div>
-                            <h3 className="text-lg font-semibold text-foreground mb-2">
-                                {applications.length === 0 ? 'No applications yet' : 'No applications found'}
+                            <h3 className="text-[0.95rem] text-white">
+                                {applications.length === 0 ? 'Nothing tracked yet' : 'Nothing matches those filters'}
                             </h3>
-                            <p className="text-muted-foreground mb-6">
+                            <p className="mx-auto mt-1.5 max-w-sm text-[0.8rem] font-medium leading-relaxed text-mute-dim">
                                 {applications.length === 0
-                                    ? 'Start tracking your job applications by adding your first one!'
-                                    : 'Try adjusting your search or filter criteria'
-                                }
+                                    ? 'Add the first application and it will appear here, with its status.'
+                                    : 'Try a different search, or clear the filters above.'}
                             </p>
                             {applications.length === 0 && (
                                 <button
                                     onClick={() => setShowForm(true)}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-resume-primary dark:bg-resume-secondary hover:bg-resume-primary/90 hover:dark:bg-resume-secondary/80 text-white rounded-lg transition"
+                                    className="mt-5 inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90"
                                 >
-                                    <Plus className="w-5 h-5" />
-                                    Add Your First Application
+                                    <Plus className="h-4 w-4" strokeWidth={1.8} />
+                                    Add application
                                 </button>
                             )}
                         </div>
                     )}
-                </main>
+                </div>
 
                 {/* Add/Edit Form Modal */}
                 {showForm && (
-                    <div className="fixed inset-0 bg-white/80 dark:bg-black flex items-center justify-center p-4 z-60">
-                        <div className="bg-white dark:bg-black rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-y-auto border border-border">
-                            <div className="order-b border-b border-gray-300 dark:border-gray-800 p-6 z-10">
-                                <h2 className="text-xl text-resume-primary dark:text-resume-secondary">
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+                        <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-line-strong bg-ink-raised shadow-2xl shadow-black/60">
+                            <div className="z-10 border-b border-line p-5">
+                                <h2 className="text-[1.05rem] text-white">
                                     {editingApp ? 'Edit Application' : 'Add New Application'}
                                 </h2>
                             </div>
 
                             <form onSubmit={handleSubmit} className="p-6 space-y-4">
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
-                                        Job Role <span className="text-red-500">*</span>
+                                    <label className="rb-label">
+                                        Job Role <span className="text-mute-faint">*</span>
                                     </label>
                                     <input
                                         type="text"
                                         required
                                         value={formData.job_role}
                                         onChange={(e) => setFormData({ ...formData, job_role: e.target.value })}
-                                        className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                        className="rb-input"
                                         placeholder="e.g., Senior Frontend Developer"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
-                                        Company <span className="text-red-500">*</span>
+                                    <label className="rb-label">
+                                        Company <span className="text-mute-faint">*</span>
                                     </label>
                                     <input
                                         type="text"
                                         required
                                         value={formData.company}
                                         onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                        className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                        className="rb-input"
                                         placeholder="e.g., Google"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
+                                    <label className="rb-label">
                                         Platform
                                     </label>
                                     <select
                                         value={formData.platform}
                                         onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                                        className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                        className="rb-input"
                                     >
                                         <option value="">Select a platform</option>
                                         {platformOptions.map(platform => (
@@ -909,33 +887,29 @@ const JobTracker = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
-                                        Date Applied <span className="text-red-500">*</span>
+                                    <label className="rb-label">
+                                        Date Applied <span className="text-mute-faint">*</span>
                                     </label>
                                     <input
                                         type="date"
                                         required
                                         value={formData.date_applied}
                                         onChange={(e) => setFormData({ ...formData, date_applied: e.target.value })}
-                                        className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                        /* Chromium draws the picker glyph dark; on this ground it
+                                           reads as a white block until inverted. */
+                                        className="rb-input [color-scheme:dark]"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
-                                        Status <span className="text-red-500">*</span>
+                                    <label className="rb-label">
+                                        Status <span className="text-mute-faint">*</span>
                                     </label>
                                     <select
                                         required
                                         value={formData.status}
                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                        className="h-8 w-full p-2 text-xs rounded-md border border-gray-300 dark:border-gray-800 bg-white dark:bg-black
-                                   focus:border-[0.5px] focus:ring-1 focus:ring-resume-primary/60 dark:focus:ring-resume-secondary/70 
-                                   focus:shadow-[0_0_6px_rgba(26,54,93,0.4)] dark:focus:shadow-[0_0_6px_rgba(56,178,172,0.4)] 
-                                   outline-none focus:outline-none transition-all duration-150"
+                                        className="rb-input"
                                     >
                                         {statusOptions.map(option => (
                                             <option key={option.value} value={option.value}>
@@ -946,31 +920,38 @@ const JobTracker = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
+                                    <label className="rb-label">
                                         Resume PDF
                                     </label>
                                     <input
                                         type="file"
                                         accept=".pdf"
                                         onChange={(e) => setFormData({ ...formData, resume_pdf: e.target.files?.[0] || null })}
-                                        className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-resume-primary/10 file:text-resume-primary dark:file:bg-resume-secondary/10 dark:file:text-resume-secondary hover:file:bg-resume-primary/20 dark:hover:file:bg-resume-secondary/20"
+                                        className="w-full rounded-md border border-line-strong bg-ink-soft px-3 py-2 text-[0.8rem] text-mute [color-scheme:dark] transition-colors duration-200 file:mr-3 file:rounded file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-[0.75rem] file:font-medium file:text-white hover:border-line-bright hover:file:bg-white/20 focus:border-white/40 focus:outline-none"
                                     />
                                     {editingApp?.resume_url && !formData.resume_pdf && (
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            Current resume: <a href={editingApp.resume_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">View</a>
+                                        <p className="mt-1.5 text-[0.75rem] font-medium text-mute-faint">
+                                            Current resume:{' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => openResume(editingApp.resume_url)}
+                                                className="text-mute underline underline-offset-4 transition-colors hover:text-white"
+                                            >
+                                                View
+                                            </button>
                                         </p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-800 dark:text-gray-400 mb-1">
+                                    <label className="rb-label">
                                         Description / Notes
                                     </label>
                                     <textarea
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         rows={4}
-                                        className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground"
+                                        className="rb-textarea resize-y"
                                         placeholder="Add any notes about this application..."
                                     />
                                 </div>
@@ -978,7 +959,7 @@ const JobTracker = () => {
                                 <div className="flex gap-3 pt-4">
                                     <button
                                         type="submit"
-                                        className="flex-1 px-6 py-3 bg-resume-primary dark:bg-resume-secondary hover:bg-resume-primary/90 hover:dark:bg-resume-secondary/80 text-white rounded-lg transition font-medium"
+                                        className="flex-1 rounded-md bg-white px-4 py-2 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90 disabled:opacity-60"
                                     >
                                         {editingApp ? 'Update Application' : 'Add Application'}
                                     </button>

@@ -1,159 +1,159 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Check, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 
 interface JobSelectorProps {
-  onJobSelected: (job: string | null, description?: string) => void;
+  onJobSelected: (job: string | null, description?: string, jdRequired?: boolean) => void;
 }
 
+const jobs = [
+  { id: "data-scientist", title: "Data Scientist", description: "Machine learning, statistics, and data analysis" },
+  { id: "frontend-developer", title: "Frontend Developer", description: "UI development with JavaScript, React, HTML, CSS" },
+  { id: "backend-developer", title: "Backend Developer", description: "Server-side applications with databases and APIs" },
+  { id: "full-stack-developer", title: "Full Stack Developer", description: "End-to-end web development, frontend and backend" },
+  { id: "software-engineer", title: "Software Engineer", description: "General software development and engineering" },
+  { id: "devops-engineer", title: "DevOps Engineer", description: "Infrastructure, deployment, and automation" },
+];
+
+/**
+ * Which role the resume is scored against, and against which posting.
+ *
+ * The job description is on by default, because it is the document the score
+ * is actually about. An applicant tracking system ranks a resume against the
+ * posting in front of it, not against a general idea of the job: Jobscan
+ * weights hard skills from the description most heavily, and reports that an
+ * exact job-title match goes with a 3.5x higher interview rate. Without a
+ * description this tool falls back to a stored list of skills for the role,
+ * which is a reasonable guess and nothing more.
+ *
+ * It can still be turned off - someone exploring before they have a posting
+ * should not be blocked - but turning it off is a deliberate act, and the
+ * weaker result is stated rather than implied.
+ */
 const JobSelector = ({ onJobSelected }: JobSelectorProps) => {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState<string>("");
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isUpdated, setIsUpdated] = useState(false);
+  const [jdRequired, setJdRequired] = useState(true);
 
-  const jobs = [
-    {
-      id: "data-scientist",
-      title: "Data Scientist",
-      description: "Machine learning, statistics, and data analysis"
-    },
-    {
-      id: "frontend-developer",
-      title: "Frontend Developer",
-      description: "UI development with JavaScript, React, HTML, CSS"
-    },
-    {
-      id: "backend-developer",
-      title: "Backend Developer",
-      description: "Server-side applications with databases and APIs"
-    },
-    {
-      id: "full-stack-developer",
-      title: "Full Stack Developer",
-      description: "End-to-end web development with frontend and backend"
-    },
-    {
-      id: "software-engineer",
-      title: "Software Engineer",
-      description: "General software development and engineering"
-    },
-    {
-      id: "devops-engineer",
-      title: "DevOps Engineer",
-      description: "Infrastructure, deployment, and automation"
-    }
-  ];
+  const titleFor = (id: string | null) =>
+    jobs.find((job) => job.id === id)?.title || null;
 
-  const handleJobChange = (value: string) => {
-    const jobTitle = value === "general" ? null : jobs.find(job => job.id === value)?.title || null;
-    setSelectedJob(value);
-    onJobSelected(jobTitle);
+  const publish = (id: string | null, text: string, required: boolean) => {
+    onJobSelected(titleFor(id), text, required);
   };
 
   return (
-    <Card className="bg-transparent rounded-b-md border border-gray-200 dark:border-gray-700">
-      <CardContent className="pt-6">
-        <h3 className="text-lg text-resume-primary dark:text-resume-secondary mb-4">Select Target Job</h3>
+    <div className="rounded-xl border border-line bg-ink-card p-5">
+      <fieldset>
+        <legend className="mb-2.5 block text-[0.7rem] font-medium uppercase tracking-[0.16em] text-mute-faint">
+          Target role
+        </legend>
 
-        <div className="flex flex-col space-y-6">
-          {/* Job Selection Column */}
-          <div>
-            <RadioGroup
-              value={selectedJob || ""}
-              onValueChange={handleJobChange}
-              className="space-y-3"
-            >
-              {jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className={`flex items-start space-x-3 p-3 rounded-md border transition-colors ${selectedJob === job.id
-                      ? "border-resume-primary dark:text-white bg-blue-50 dark:bg-gray-800"
-                      : "border-gray-200 hover:border-gray-300 dark:border-gray-600 dark:hover:border-gray-500"
-                    }`}
-                >
-                  <RadioGroupItem value={job.id} id={job.id} className="mt-1" />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor={job.id}
-                      className={`block text-base font-medium mb-1 cursor-pointer ${selectedJob === job.id
-                          ? "text-resume-primary dark:text-white"
-                          : "text-gray-900 dark:text-gray-200"
-                        }`}
-                    >
-                      {job.title}
-                    </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{job.description}</p>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          {/* Job Description Column */}
-          <div className={`transition-all duration-300 ${selectedJob ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-            <Label
-              htmlFor="job-description"
-              className="text-lg text-resume-primary dark:text-resume-secondary mb-4"
-            >
-              Job Description (Optional)
-            </Label>
-            <Textarea
-              id="job-description"
-              placeholder="Paste the job description here to get more targeted analysis and recommendations..."
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              className="min-h-[200px] resize-y mt-4"
-              disabled={!selectedJob}
-            />
-
-            {selectedJob && (
-              <button
-                onClick={async () => {
-                  setIsUpdating(true);
-                  setIsUpdated(false);
-                  
-                  // Simulate update process
-                  await new Promise(resolve => setTimeout(resolve, 800));
-                  
-                  const jobTitle = jobs.find(job => job.id === selectedJob)?.title || null;
-                  onJobSelected(jobTitle, jobDescription);
-                  
-                  setIsUpdating(false);
-                  setIsUpdated(true);
-                  
-                  // Hide the checkmark after 2 seconds
-                  setTimeout(() => setIsUpdated(false), 5000);
-                }}
-                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
-                disabled={isUpdating}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {jobs.map((job) => {
+            const on = selectedJob === job.id;
+            return (
+              <label
+                key={job.id}
+                title={job.description}
+                className={`flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center text-[0.8rem] transition-colors duration-200 ${
+                  on
+                    ? "border-line-bright bg-white/10 text-white"
+                    : "border-line text-mute hover:border-line-strong hover:text-white"
+                }`}
               >
-                {isUpdating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
-                  </>
-                ) : isUpdated ? (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Updated!
-                  </>
-                ) : (
-                  "Update Job Description"
-                )}
-              </button>
-            )}
-
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              Adding a job description helps provide more accurate skill matching and personalized recommendations.
-            </p>
-          </div>
+                <input
+                  type="radio"
+                  name="target-role"
+                  value={job.id}
+                  checked={on}
+                  onChange={() => {
+                    setSelectedJob(job.id);
+                    publish(job.id, jobDescription, jdRequired);
+                  }}
+                  className="sr-only"
+                />
+                {job.title}
+              </label>
+            );
+          })}
         </div>
-      </CardContent>
-    </Card>
+      </fieldset>
+
+      <div
+        className={`mt-5 border-t border-line pt-5 transition-opacity duration-300 ${
+          selectedJob ? "opacity-100" : "pointer-events-none opacity-40"
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label
+            htmlFor="job-description"
+            className="block text-[0.7rem] font-medium uppercase tracking-[0.16em] text-mute-faint"
+          >
+            Job description
+          </label>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={jdRequired}
+            onClick={() => {
+              const next = !jdRequired;
+              setJdRequired(next);
+              publish(selectedJob, jobDescription, next);
+            }}
+            className="flex items-center gap-2 text-[0.75rem] font-medium text-mute transition-colors duration-200 hover:text-white"
+          >
+            <span
+              className={`relative h-4 w-7 rounded-full border transition-colors duration-200 ${
+                jdRequired ? "border-line-bright bg-white/80" : "border-line-strong bg-ink-soft"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-2.5 w-2.5 rounded-full transition-all duration-200 ${
+                  jdRequired ? "left-[0.875rem] bg-ink" : "left-0.5 bg-mute"
+                }`}
+              />
+            </span>
+            {jdRequired ? "Using a description" : "No description"}
+          </button>
+        </div>
+
+        {/* Why this field is not optional by default. */}
+        <p className="mt-2 flex items-start gap-2 text-[0.75rem] font-medium leading-relaxed text-mute-dim">
+          <Info size={13} className="mt-0.5 shrink-0 text-mute-faint" strokeWidth={1.8} />
+          <span>
+            {jdRequired ? (
+              <>
+                Paste the posting. ATS ranks a resume against the specific
+                description it was filed under, weighting the hard skills named
+                there above everything else — so this is what makes the score
+                mean something.
+              </>
+            ) : (
+              <>
+                Without a description the resume is scored against a stored list
+                of skills for the role. That is a general guess, not this
+                employer's requirements, and the gaps it reports may not be the
+                ones that matter.
+              </>
+            )}
+          </span>
+        </p>
+
+        <textarea
+          id="job-description"
+          placeholder="Paste the full posting — responsibilities and requirements."
+          value={jobDescription}
+          onChange={(e) => {
+            setJobDescription(e.target.value);
+            publish(selectedJob, e.target.value, jdRequired);
+          }}
+          className="rb-textarea mt-3 resize-y"
+          rows={6}
+          disabled={!selectedJob || !jdRequired}
+        />
+      </div>
+    </div>
   );
 };
 

@@ -117,7 +117,14 @@ export const ParseXray: FC = () => (
 /* ------------------------------------------------------------------ */
 
 /** A 240° arc with a tick ring, a swept value and a centre readout. */
-export const ScoreGauge: FC = () => {
+export const ScoreGauge: FC<{ score?: number; label?: string; glow?: boolean }> = ({
+  score = 78,
+  label = "ATS SCORE",
+  // The backdrop wash is sized to the bento cell it was drawn for. On a
+  // narrower panel its edges land inside the visible box and read as a
+  // rectangle, so callers outside the grid turn it off.
+  glow = true,
+}) => {
   const cx = 160;
   const cy = 118;
   const r = 74;
@@ -125,7 +132,7 @@ export const ScoreGauge: FC = () => {
   // 240° of sweep, starting at 150° and ending at 390°.
   const start = 150;
   const total = 240;
-  const value = 0.78;
+  const value = Math.max(0, Math.min(100, score)) / 100;
 
   const pt = (angle: number, radius: number) => {
     const rad = (angle * Math.PI) / 180;
@@ -162,9 +169,9 @@ export const ScoreGauge: FC = () => {
   const [hx, hy] = pt(start + total * value, r);
 
   return (
-    <svg viewBox="0 0 320 180" className="h-full w-full" role="img" aria-label="A gauge reading an ATS score of 78 out of 100">
+    <svg viewBox="0 0 320 180" className="h-full w-full" role="img" aria-label={`A gauge reading a score of ${Math.round(score)} out of 100`}>
       <Defs id="gauge" />
-      <rect x="0" y="0" width="320" height="180" fill="url(#gauge-glow)" opacity="0.45" />
+      {glow && <rect x="0" y="0" width="320" height="180" fill="url(#gauge-glow)" opacity="0.45" />}
 
       {ticks}
 
@@ -177,10 +184,10 @@ export const ScoreGauge: FC = () => {
 
       {/* Readout */}
       <text x={cx} y={cy + 2} textAnchor="middle" fontSize="38" fontWeight="500" fill="#ffffff" fontFamily="inherit">
-        78
+        {Math.round(score)}
       </text>
       <text x={cx} y={cy + 20} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.4)" fontFamily="inherit" letterSpacing="2">
-        ATS SCORE
+        {label}
       </text>
 
       {/* Range labels */}

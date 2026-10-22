@@ -1,52 +1,92 @@
-import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import type { FC, ReactNode } from "react";
 import {
   Info,
-  Lightbulb,
   AlertTriangle,
-  CheckCircle2,
+  Check,
   TrendingUp,
-  Code,
-  BarChart3,
-  FileText,
   Zap,
-  Star,
-  StarHalf,
-  X
+  X,
+  Minus,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { ResumeResultsProps } from '../types/analysis'
+import { ScoreGauge } from "@/LandingPage/ui/art";
+import type { ResumeResultsProps } from "../types/analysis";
+
+/* ------------------------------------------------------------------ */
+/* Small shared pieces                                                 */
+/* ------------------------------------------------------------------ */
+
+/** A titled block. Everything on this page is one of these. */
+const Panel: FC<{ title: string; meta?: ReactNode; children: ReactNode }> = ({
+  title,
+  meta,
+  children,
+}) => (
+  <section className="rounded-xl border border-line bg-ink-card p-5">
+    <div className="mb-4 flex items-baseline justify-between gap-4">
+      <h3 className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-mute-faint">
+        {title}
+      </h3>
+      {meta && <span className="text-[0.75rem] font-medium text-mute-dim">{meta}</span>}
+    </div>
+    {children}
+  </section>
+);
+
+/** A number with a caption. Weight and size carry the emphasis, not colour. */
+const Stat: FC<{ value: ReactNode; label: string }> = ({ value, label }) => (
+  <div className="rounded-lg border border-line bg-ink-soft px-4 py-3.5">
+    <div className="text-2xl font-medium tracking-tight text-white">{value}</div>
+    <div className="mt-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-mute-faint">
+      {label}
+    </div>
+  </div>
+);
+
+/**
+ * A skill, present or absent.
+ *
+ * Red is the single hue allowed on this page, and only ever for a gap - the
+ * same red the builder uses for Reset and delete. A matched skill is just
+ * white on the ground, because having the skill is the unremarkable case.
+ */
+const SkillChip: FC<{ label: string; missing?: boolean }> = ({ label, missing = false }) => (
+  <span
+    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[0.75rem] font-medium ${
+      missing
+        ? "border-red-500/30 bg-red-500/[0.06] text-red-200"
+        : "border-line-strong bg-white/[0.06] text-white"
+    }`}
+  >
+    {missing ? <X size={11} strokeWidth={2.4} /> : <Check size={11} strokeWidth={2.4} />}
+    {label}
+  </span>
+);
 
 const ResumeResults = ({ result, loading, error }: ResumeResultsProps) => {
   /** -------------------- LOADING STATE -------------------- */
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card className="animate-pulse">
-          <CardHeader>
-            <Skeleton className="h-8 w-1/2 bg-gray-300 dark:bg-gray-700" />
-            <Skeleton className="h-6 w-full mt-2 bg-gray-300 dark:bg-gray-700" />
-            <Skeleton className="h-4 w-1/3 mt-4 bg-gray-300 dark:bg-gray-700" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="h-6 w-1/3 bg-gray-300 dark:bg-gray-700" />
-                <div className="flex gap-2">
-                  {[...Array(5)].map((_, j) => (
-                    <Skeleton
-                      key={j}
-                      className="h-6 w-20 bg-gray-300 dark:bg-gray-700"
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-line bg-ink-card p-5">
+          <div className="flex items-center gap-5">
+            <div className="h-24 w-24 shrink-0 animate-pulse rounded-full bg-white/[0.04]" />
+            <div className="flex-1 space-y-2.5">
+              <div className="h-3 w-1/3 animate-pulse rounded bg-white/[0.06]" />
+              <div className="h-3 w-1/2 animate-pulse rounded bg-white/[0.04]" />
+              <div className="h-3 w-1/4 animate-pulse rounded bg-white/[0.03]" />
+            </div>
+          </div>
+        </div>
+        {[0, 1].map((i) => (
+          <div key={i} className="rounded-xl border border-line bg-ink-card p-5">
+            <div className="mb-4 h-2.5 w-28 animate-pulse rounded bg-white/[0.06]" />
+            <div className="flex flex-wrap gap-2">
+              {[...Array(6)].map((_, j) => (
+                <div key={j} className="h-6 w-20 animate-pulse rounded-md bg-white/[0.04]" />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -54,41 +94,41 @@ const ResumeResults = ({ result, loading, error }: ResumeResultsProps) => {
   /** -------------------- ERROR STATE -------------------- */
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Analysis Failed</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="rounded-xl border border-red-500/30 bg-red-500/[0.04] p-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+          <div>
+            <p className="text-[0.9rem] text-red-200">Analysis failed</p>
+            <p className="mt-1 text-[0.8rem] font-medium leading-relaxed text-red-300/80">{error}</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   /** -------------------- EMPTY STATE -------------------- */
   if (!result) {
     return (
-      <Alert>
-        <Info className="h-4 w-4 mt-2" />
-        <AlertTitle className="flex items-center gap-2 justify-between">
-          <span>Ready to analyze</span>
-          <span className="flex items-center gap-1 text-green-600 text-sm font-medium border border-green-600 rounded-xl p-1">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-            AI Active
-          </span>
-        </AlertTitle>
-        <AlertDescription>
-          Upload a resume and select a target job to begin comprehensive analysis.
-        </AlertDescription>
-      </Alert>
+      <div className="rounded-xl border border-line bg-ink-card p-5">
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-mute-faint" strokeWidth={1.6} />
+          <div>
+            <p className="text-[0.9rem] text-white">Nothing scored yet</p>
+            <p className="mt-1 max-w-md text-[0.8rem] font-medium leading-relaxed text-mute-dim">
+              Add a resume and pick a target role. The score, the skills it found
+              and the ones it did not will appear here.
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   /** -------------------- DESTRUCTURE DATA -------------------- */
   const {
     score = 0,
-    matched_skills = {},
-    missing_skills = {},
     recommendations = [],
     target_job = "General",
-    projects = [],
     analysis = {
       total_skills_found: 0,
       total_projects: 0,
@@ -96,345 +136,280 @@ const ResumeResults = ({ result, loading, error }: ResumeResultsProps) => {
       skills_with_metrics: 0,
       achieved_score: 0,
       project_bonus: 0,
-      diversity_bonus: 0
-    }
+      diversity_bonus: 0,
+    },
   } = result;
 
-  // Extract project relevance from the backend response structure
   const job_match = (result as any).job_match || {};
   const project_relevance = job_match.project_relevance || {};
 
   /** -------------------- HELPERS -------------------- */
-  const getScoreInfo = (score: number) => {
-    if (score >= 80) return { color: "text-green-600", message: "Excellent Match", icon: "🎉" };
-    if (score >= 70) return { color: "text-blue-600", message: "Strong Match", icon: "💪" };
-    if (score >= 60) return { color: "text-yellow-600", message: "Good Match", icon: "👍" };
-    if (score >= 40) return { color: "text-orange-600", message: "Needs Improvement", icon: "🔧" };
-    return { color: "text-red-600", message: "Major Gaps", icon: "🚨" };
+  const verdict = (value: number) => {
+    if (value >= 80) return "Excellent match";
+    if (value >= 70) return "Strong match";
+    if (value >= 60) return "Good match";
+    if (value >= 40) return "Needs work";
+    return "Major gaps";
   };
 
-  const getRelevanceIcon = (relevanceLabel: string) => {
-    switch (relevanceLabel) {
+  const relevanceMark = (label: string) => {
+    switch (label) {
       case "Highly Relevant":
-        return <Star className="h-4 w-4 dark:text-green-400 dark:fill-green-400 text-green-200 fill-green-200" />;
+        return <Check size={12} strokeWidth={2.4} className="text-white" />;
       case "Somewhat Relevant":
-        return <StarHalf className="h-4 w-4 dark:text-yellow-400 dark:fill-yellow-400 text-yellow-200 fill-yellow-200" />;
+        return <Minus size={12} strokeWidth={2.4} className="text-mute" />;
       case "Not Relevant":
-        return <X className="h-4 w-4 dark:text-red-500 text-red-200" />;
+        return <X size={12} strokeWidth={2.4} className="text-red-300" />;
       default:
-        return <Star className="h-4 w-4 text-gray-400" />;
+        return <Minus size={12} strokeWidth={2.4} className="text-mute-faint" />;
     }
   };
 
-  const getRelevanceBadgeVariant = (relevanceLabel: string) => {
-    switch (relevanceLabel) {
-      case "Highly Relevant":
-        return "default";
-      case "Somewhat Relevant":
-        return "secondary";
-      case "Not Relevant":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
+  const relevanceChip = (label: string) =>
+    label === "Not Relevant"
+      ? "border-red-500/30 bg-red-500/[0.06] text-red-200"
+      : label === "Highly Relevant"
+        ? "border-line-bright bg-white/10 text-white"
+        : "border-line-strong text-mute";
 
-  const safeNumber = (value: any, decimals = 1): string => {
-    const num = typeof value === 'number' ? value : 0;
-    return num.toFixed(decimals);
-  };
+  const safeNumber = (value: any, decimals = 1): string =>
+    (typeof value === "number" ? value : 0).toFixed(decimals);
 
-  const scoreInfo = getScoreInfo(score);
+  const titleCase = (s: string) =>
+    s.toLowerCase().split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
+  const matched: string[] = job_match.matched_skills || [];
+  const missing: string[] = job_match.missing_skills || [];
+  const projectEntries = Object.entries(project_relevance) as [string, any][];
+  const metricsData = (result as any).quantifiable_impacts || {};
+  const withMetrics = Object.keys(metricsData).filter(
+    (p) => (metricsData[p] || []).length > 0
+  ).length;
 
   /** -------------------- MAIN RENDER -------------------- */
   return (
-    <div className="space-y-6">
-      {/* Main Score Card */}
-      <Card className="shadow-lg border-2">
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl">Analysis Results</CardTitle>
-              <p className="text-lg text-muted-foreground mt-1">
-                {scoreInfo.icon} {scoreInfo.message}
-              </p>
-            </div>
-            <div className={`text-3xl sm:text-4xl font-bold ${scoreInfo.color}`}>
-              {Math.round(score)}/100
-            </div>
+    <div className="space-y-4">
+      {/* ---- Headline score ---- */}
+      <section className="rounded-xl border border-line bg-gradient-to-b from-ink-card to-ink-soft p-5">
+        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+          {/* The same gauge the landing page uses, now reading real data. */}
+          <div className="h-[150px] w-[260px] shrink-0">
+            <ScoreGauge score={score} label="ATS SCORE" glow={false} />
           </div>
-          <Progress value={score} className="h-4 mt-4" />
-          <div className="flex justify-between items-center mt-2">
-            <div className="text-sm text-muted-foreground">
-              Target: <span className="font-medium text-foreground">
-                {target_job
-                  .toLowerCase()
-                  .split(' ')
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ')}
+
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h2 className="text-[1.6rem] font-medium leading-tight tracking-[-0.01em] text-white">
+              {verdict(score)}
+            </h2>
+            <p className="mt-1.5 text-[0.8rem] font-medium text-mute-dim">
+              Scored against{" "}
+              <span className="text-mute">{titleCase(target_job)}</span>
+            </p>
+
+            <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-1.5 sm:justify-start">
+              <span className="text-[0.75rem] font-medium text-mute-dim">
+                <span className="text-white">{analysis.total_skills_found}</span> skills found
+              </span>
+              <span className="text-[0.75rem] font-medium text-mute-dim">
+                <span className="text-white">{analysis.total_projects}</span> projects
+              </span>
+              <span className="text-[0.75rem] font-medium text-mute-dim">
+                <span className="text-white">{missing.length}</span> gaps
               </span>
             </div>
-            <div className="flex gap-4 text-xs text-muted-foreground">
-              <span>Skills: {analysis.total_skills_found}</span>
-              <span>Projects: {analysis.total_projects}</span>
-            </div>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
+      </section>
 
-      {/* Score Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Score Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-blue-50 dark:bg-blue-700 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-200">
-                {safeNumber(job_match.skill_match_score || analysis.achieved_score)}
-              </div>
-              <div className="text-sm text-blue-800 dark:text-blue-100">Skills Match</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 dark:bg-green-700 rounded-lg">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-200">
-                {safeNumber(job_match.avg_project_relevance || 0)}
-              </div>
-              <div className="text-sm text-green-800 dark:text-green-100">Avg Project Relevance</div>
-            </div>
-            <div className="text-center p-4 bg-purple-50 dark:bg-purple-700 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-200">
-                {safeNumber(job_match.overall_relevance_score || score)}
-              </div>
-              <div className="text-sm text-purple-800 dark:text-purple-100">Overall Score</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* ---- Breakdown ---- */}
+      <Panel title="Breakdown">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Stat
+            value={safeNumber(job_match.skill_match_score || analysis.achieved_score)}
+            label="Skills match"
+          />
+          <Stat
+            value={safeNumber(job_match.avg_project_relevance || 0)}
+            label="Avg project relevance"
+          />
+          <Stat
+            value={safeNumber(job_match.overall_relevance_score || score)}
+            label="Overall"
+          />
+        </div>
+      </Panel>
 
-      {/* Skills Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-              Matched Skills ({(job_match.matched_skills || []).length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(job_match.matched_skills || []).length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {(job_match.matched_skills || []).map((skill: string, index: number) => (
-                  <Badge
-                    key={`${skill}-${index}`}
-                    variant="default"
-                    className="gap-1.5 bg-green-100 text-green-800 hover:bg-green-200"
-                  >
-                    <CheckCircle2 className="h-3 w-3" />
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No matching skills detected for this job role.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      {/* ---- Skills ---- */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Panel title="Skills matched" meta={matched.length || null}>
+          {matched.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {matched.map((skill, i) => (
+                <SkillChip key={`${skill}-${i}`} label={skill} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-[0.8rem] font-medium text-mute-dim">
+              Nothing in the resume matched this role.
+            </p>
+          )}
+        </Panel>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Missing Critical Skills ({(job_match.missing_skills || []).length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(job_match.missing_skills || []).length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {(job_match.missing_skills || []).map((skill: string, index: number) => (
-                  <Badge
-                    key={`${skill}-${index}`}
-                    variant="destructive"
-                    className="gap-1.5"
-                  >
-                    <AlertTriangle className="h-3 w-3" />
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Great! No critical missing skills identified.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <Panel title="Skills missing" meta={missing.length || null}>
+          {missing.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {missing.map((skill, i) => (
+                <SkillChip key={`${skill}-${i}`} label={skill} missing />
+              ))}
+            </div>
+          ) : (
+            <p className="text-[0.8rem] font-medium text-mute-dim">
+              No critical gaps for this role.
+            </p>
+          )}
+        </Panel>
       </div>
 
-      {/* Projects Analysis with Relevance Labels */}
-      {Object.keys(project_relevance).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Code className="h-5 w-5 text-blue-500" />
-              Projects Analysis ({Object.keys(project_relevance).length})
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Projects categorized by relevance to {target_job}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries(project_relevance).map(([projectName, projectData]: [string, any], index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-lg">{projectName}</h4>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={getRelevanceBadgeVariant(projectData.relevance_label)}
-                      className="flex items-center gap-1"
+      {/* ---- Projects ---- */}
+      {projectEntries.length > 0 && (
+        <Panel title="Projects" meta={`weighed against ${titleCase(target_job)}`}>
+          <div className="space-y-2.5">
+            {projectEntries.map(([projectName, projectData], index) => {
+              const used: string[] =
+                ((result as any).projects_with_skills || {})[projectName] || [];
+              const projectMetrics: string[] = metricsData[projectName] || [];
+              const hits: string[] = projectData.matched_skills || [];
+
+              return (
+                <div key={index} className="rounded-lg border border-line bg-ink-soft p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h4 className="text-[0.95rem] text-white">{projectName}</h4>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.7rem] font-medium ${relevanceChip(
+                        projectData.relevance_label
+                      )}`}
                     >
-                      {getRelevanceIcon(projectData.relevance_label)}
+                      {relevanceMark(projectData.relevance_label)}
                       {projectData.relevance_label}
-                    </Badge>
+                    </span>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium mb-2">
-                      Skills Used ({((result as any).projects_with_skills[projectName] || []).length}):
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {((result as any).projects_with_skills[projectName] || []).map((skill: string, skillIndex: number) => {
-                        const isMatched = (projectData.matched_skills || []).includes(skill);
-                        return (
-                          <Badge
-                            key={`${skill}-${skillIndex}`}
-                            variant={isMatched ? "default" : "outline"}
-                            className={`text-xs ${isMatched ? 'bg-green-100 text-green-800' : ''}`}
-                          >
-                            {isMatched && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                            {skill}
-                          </Badge>
-                        );
-                      })}
+                  <div className="mt-3.5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-mute-faint">
+                        Skills used
+                      </p>
+                      {used.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {used.map((skill, skillIndex) => {
+                            const isMatched = hits.includes(skill);
+                            return (
+                              <span
+                                key={`${skill}-${skillIndex}`}
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[0.7rem] font-medium ${
+                                  isMatched
+                                    ? "bg-white/10 text-white"
+                                    : "border border-line text-mute-dim"
+                                }`}
+                              >
+                                {isMatched && <Check size={10} strokeWidth={2.6} />}
+                                {skill}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[0.75rem] font-medium text-mute-dim">
+                          None detected.
+                        </p>
+                      )}
+                      {hits.length > 0 && (
+                        <p className="mt-2.5 text-[0.7rem] font-medium leading-relaxed text-mute-dim">
+                          <span className="text-white">{hits.length}</span> relevant to the
+                          role: {hits.join(", ")}
+                        </p>
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <p className="text-sm font-medium mb-2">
-                      Quantifiable Results:
-                    </p>
-                    {/* Get metrics from the main data structure */}
-                    {(() => {
-                      const metricsData = (result as any).quantifiable_impacts || {};
-                      const projectMetrics = metricsData[projectName] || [];
-
-                      return projectMetrics.length > 0 ? (
-                        <div className="space-y-1">
-                          {projectMetrics.slice(0, 3).map((metric: string, metricIndex: number) => (
-                            <div key={metricIndex} className="text-xs dark:bg-green-800 p-2 rounded border-2 border-green-500">
-                              <TrendingUp className="h-3 w-3 inline mr-1 text-green-600" />
+                    <div>
+                      <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-mute-faint">
+                        Quantified results
+                      </p>
+                      {projectMetrics.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {projectMetrics.slice(0, 3).map((metric, metricIndex) => (
+                            <div
+                              key={metricIndex}
+                              className="flex items-start gap-2 border-l border-line-bright pl-2.5 text-[0.75rem] font-medium leading-relaxed text-mute"
+                            >
+                              <TrendingUp
+                                size={11}
+                                className="mt-1 shrink-0 text-white"
+                                strokeWidth={2}
+                              />
                               {metric}
                             </div>
                           ))}
                           {projectMetrics.length > 3 && (
-                            <p className="text-xs text-muted-foreground">
-                              +{projectMetrics.length - 3} more metrics
+                            <p className="text-[0.7rem] font-medium text-mute-faint">
+                              +{projectMetrics.length - 3} more
                             </p>
                           )}
                         </div>
                       ) : (
-                        <div className="text-xs text-muted-foreground p-2 dark:bg-yellow-950 rounded border-2 border-yellow-500">
-                          <AlertTriangle className="h-3 w-3 inline mr-1 text-yellow-600" />
-                          No quantifiable results detected
-                        </div>
-                      );
-                    })()}
+                        <p className="border-l border-red-500/40 pl-2.5 text-[0.75rem] font-medium leading-relaxed text-red-300/80">
+                          No numbers here. Recruiters read impact in figures.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* Matched Skills Summary for this project */}
-                {(projectData.matched_skills || []).length > 0 && (
-                  <div className="mt-3 p-2 bg-green-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-xs text-green-700 font-semibold">
-                      <CheckCircle2 className="h-3 w-3 inline mr-1" />
-                      <strong>{(projectData.matched_skills || []).length}</strong> job-relevant skill{(projectData.matched_skills || []).length !== 1 ? 's' : ''} found: {(projectData.matched_skills || []).join(', ')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recommendations */}
-      {recommendations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
-              Recommendations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recommendations.map((rec, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 dark:bg-gray-800 bg-gray-100 rounded-lg border-l-4 border-blue-400">
-                  <Zap className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-blue-500">{rec}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Analysis Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-gray-500" />
-            Analysis Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div className="p-3 bg-blue-50 dark:bg-blue-700 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-200">{analysis.total_skills_found}</div>
-              <div className="text-xs text-blue-800 dark:text-blue-100">Total Skills Found</div>
-            </div>
-            <div className="p-3 bg-green-50 dark:bg-green-700 rounded-lg">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-200">{Object.keys(project_relevance).length}</div>
-              <div className="text-xs text-green-800 dark:text-green-100">Analyzed Projects</div>
-            </div>
-            <div className="p-3 bg-purple-50 dark:bg-purple-700 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-200">
-                {Object.values(project_relevance).filter((p: any) => p.relevance_label === "Highly Relevant").length}
-              </div>
-              <div className="text-xs text-purple-800 dark:text-purple-100">Highly Relevant</div>
-            </div>
-            <div className="p-3 bg-orange-50 dark:bg-orange-700 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-200">
-                {(() => {
-                  const totalProjects = Object.keys(project_relevance).length;
-                  const metricsData = (result as any).quantifiable_impacts || {};
-                  const projectsWithMetrics = Object.keys(metricsData).filter(project =>
-                    (metricsData[project] || []).length > 0
-                  ).length;
-                  return totalProjects > 0 ? Math.round((projectsWithMetrics / totalProjects) * 100) : 0;
-                })()}%
-              </div>
-              <div className="text-xs text-orange-800 dark:text-orange-100">Have Metrics</div>
-            </div>
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+        </Panel>
+      )}
+
+      {/* ---- Recommendations ---- */}
+      {recommendations.length > 0 && (
+        <Panel title="What to fix next" meta={recommendations.length}>
+          <ol className="space-y-2.5">
+            {recommendations.map((rec, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-3 rounded-lg border border-line bg-ink-soft p-3"
+              >
+                <Zap size={13} className="mt-0.5 shrink-0 text-white" strokeWidth={1.8} />
+                <span className="text-[0.8rem] font-medium leading-relaxed text-mute">
+                  {rec}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Panel>
+      )}
+
+      {/* ---- Summary ---- */}
+      <Panel title="Summary">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat value={analysis.total_skills_found} label="Skills found" />
+          <Stat value={projectEntries.length} label="Projects read" />
+          <Stat
+            value={
+              projectEntries.filter(([, p]) => p.relevance_label === "Highly Relevant").length
+            }
+            label="Highly relevant"
+          />
+          <Stat
+            value={`${
+              projectEntries.length > 0
+                ? Math.round((withMetrics / projectEntries.length) * 100)
+                : 0
+            }%`}
+            label="Have metrics"
+          />
+        </div>
+      </Panel>
     </div>
   );
 };

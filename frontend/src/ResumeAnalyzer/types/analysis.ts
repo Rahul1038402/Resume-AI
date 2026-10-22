@@ -56,6 +56,14 @@ export interface AnalysisResult {
   projects_with_skills?: Record<string, string[]>;
   quantifiable_impacts?: Record<string, string[]>;
   job_match?: JobMatch;
+  /** What the daily scan quota looks like after this request. */
+  rate_limit?: {
+    limit: number;
+    used: number;
+    remaining: number;
+    resets_in_seconds: number;
+    resets_at?: string;
+  };
 }
 
 export interface ResumeResultsProps {

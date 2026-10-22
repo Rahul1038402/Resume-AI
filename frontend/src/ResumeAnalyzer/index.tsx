@@ -5,21 +5,18 @@ import ResumeUploader from "@/components/ResumeUploader";
 import JobSelector from "@/ResumeAnalyzer/component/JobSelector";
 import ResumeResults from "@/ResumeAnalyzer/component/ResumeResults";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { analyzeResume } from "@/ResumeAnalyzer/api/resumeService";
 import type { AnalysisResult } from "@/ResumeAnalyzer/types/analysis";
 import { toast } from "sonner";
-import { Loader2, X } from "lucide-react";
-import GradientText from "@/components/ui/GradientText";
-import ShinyText from "@/components/ui/ShinyText";
+import { Loader2, X, ArrowRight } from "lucide-react";
 {/* const GalaxyAttackGame = lazy(() => import("@/components/GalaxyAttack")); */}
 
 //Gaming ke lazy loading and reduce chunk size
 const GameLoadingSkeleton = () => (
   <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-      <p className="text-gray-600 dark:text-gray-300">Loading game...</p>
+    <div className="rounded-xl border border-line bg-ink-card p-8 text-center">
+      <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-mute" />
+      <p className="text-[0.8rem] text-mute">Loading game...</p>
     </div>
   </div>
 );
@@ -47,12 +44,30 @@ const Analyzer = () => {
     setError(null);
   };
 
-  const handleJobSelected = (selectedJob, description) => {
+  const [jdRequired, setJdRequired] = useState(true);
+  // Scans are capped per day, so the count belongs on screen before someone
+  // spends their last one rather than in the error that follows.
+  const [scansLeft, setScansLeft] = useState<number | null>(null);
+
+  const handleJobSelected = (selectedJob, description, requiresJd = true) => {
     setTargetJob(selectedJob);
     setJobDescription(description || "");
+    setJdRequired(requiresJd);
     setResult(null);
     setError(null);
   };
+
+  // A description is the document the score is about, so by default we wait
+  // for one rather than quietly scoring against a stored skill list.
+  const activeJd = jdRequired ? jobDescription.trim() : "";
+  const awaitingJd = jdRequired && !activeJd;
+  const blockedReason = !file
+    ? "Add a resume to begin."
+    : !targetJob
+      ? "Pick the role you are applying for."
+      : awaitingJd
+        ? "Paste the job description, or switch it off above to score against the role in general."
+        : null;
 
   const handleAnalyze = async () => {
     if (!file) {
@@ -93,7 +108,7 @@ const Analyzer = () => {
     }, intervalTime);
 
     try {
-      const analysisResult = await analyzeResume(file, targetJob, [], jobDescription);
+      const analysisResult = await analyzeResume(file, targetJob, [], activeJd);
       clearInterval(progressInterval);
       setLoadingProgress(100);
       
@@ -101,12 +116,17 @@ const Analyzer = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       setResult(analysisResult);
+      if (analysisResult.rate_limit) {
+        setScansLeft(analysisResult.rate_limit.remaining);
+      }
       setAnalysisState('completed');
       toast.success("Analysis completed successfully!");
     } catch (err) {
       clearInterval(progressInterval);
       console.error("Analysis error:", err);
       const errorMessage = err instanceof Error ? err.message : "Analysis failed";
+      const quota = (err as { rateLimit?: { remaining: number } })?.rateLimit;
+      if (quota) setScansLeft(quota.remaining);
       setError(errorMessage);
       setAnalysisState('error');
       toast.error(errorMessage);
@@ -131,22 +151,15 @@ const Analyzer = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 pt-28 pb-12">
+      <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <GradientText
-              colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
-              animationSpeed={11}
-              showBorder={false}
-              className="text-5xl"
-            >
-              <p className="mb-5">
-                Resume Analyzer
-              </p>
-            </GradientText>
-
-            <p className="text-xl text-gray-600 dark:text-gray-300">
-              Upload your resume, choose a target job, and get AI-powered analysis
+          <div className="mb-10 text-center">
+            <h1 className="text-balance text-3xl font-medium leading-[1.14] tracking-[-0.02em] text-white sm:text-[2.4rem]">
+              Score it <span className="text-mute-dim">against the role</span>
+            </h1>
+            <p className="mx-auto mt-4 max-w-md text-pretty text-sm leading-relaxed text-mute-dim">
+              Upload the document, name the job, and see what a parser actually
+              extracts before a recruiter ever does.
             </p>
           </div>
 
@@ -186,48 +199,70 @@ const Analyzer = () => {
             </div>
           </div> */}
 
-          <div className="space-y-6">
-            <div className="flex flex-col">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4">
               <ResumeUploader onFileSelected={handleFileSelected} />
               <JobSelector onJobSelected={handleJobSelected} />
             </div>
 
-            <Card className="bg-transparent rounded-lg p-6 text-center">
-              <button
-                className="dark:bg-gray-800/80 rounded-lg border bg-resume-primary hover:bg-resume-primary/90 hover:dark:bg-gray-800/60 dark:border-gray-700 px-4 h-[60px] font-medium cursor-pointer transition-all duration-300"
-                onClick={() => startAnalysisWithGame(false)}
-                disabled={!file || isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <span className="flex items-center justify-center">
-                    <ShinyText text="Analyze Resume" disabled={false} speed={5} className="text-lg" />
-                  </span>
-                )}
-              </button>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 z-0">
-                We'll analyze your resume against {targetJob || "general"} requirements. <br/>
-              </p>
+            <div className="rounded-xl border border-line bg-ink-card p-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-[0.95rem] text-white">Ready when you are</p>
+                  <p className="mt-1 max-w-md text-[0.8rem] font-medium leading-relaxed text-mute-dim">
+                    {blockedReason ?? (
+                      <>
+                        Scoring against{" "}
+                        <span className="text-mute">{targetJob}</span>
+                        {activeJd
+                          ? " and the description you pasted."
+                          : " in general."}
+                      </>
+                    )}
+                  </p>
+                </div>
 
-              {/* Loading Progress Bar */}
+                <div className="flex items-center gap-3">
+                  {scansLeft !== null && (
+                    <span className="text-[0.75rem] font-medium text-mute-faint">
+                      {scansLeft} of 5 scans left today
+                    </span>
+                  )}
+                <button
+                  type="button"
+                  onClick={() => startAnalysisWithGame(false)}
+                  disabled={!file || isAnalyzing || !!blockedReason}
+                  className="flex items-center gap-2 rounded-md bg-white px-4 py-2 text-[0.8rem] font-medium text-ink transition-colors duration-200 hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-mute-faint disabled:text-ink/60"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      Analyzing
+                    </>
+                  ) : (
+                    <>
+                      Analyze resume
+                      <ArrowRight size={15} strokeWidth={1.8} />
+                    </>
+                  )}
+                </button>
+                </div>
+              </div>
+
               {isAnalyzing && (
                 <div className="mt-4">
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="bg-resume-primary dark:bg-resume-secondary h-2.5 rounded-full transition-all duration-300 ease-out"
+                  <div className="h-px w-full overflow-hidden bg-line-strong">
+                    <div
+                      className="h-px bg-white transition-all duration-300 ease-out"
                       style={{ width: `${loadingProgress}%` }}
-                    ></div>
+                    />
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {loadingProgress < 95 ? "Preparing analysis..." : "Finalizing results..."}
+                  <p className="mt-2 text-[0.7rem] font-medium text-mute-faint">
+                    {loadingProgress < 95 ? "Reading the document" : "Finalizing results"}
                   </p>
                 </div>
               )}
-            </Card>
+            </div>
 
             <ResumeResults
               result={result}
@@ -237,15 +272,17 @@ const Analyzer = () => {
 
             {/* Show error state when analysis fails */}
             {error && !showGame && (
-              <Card className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-                <div className="flex flex-col items-center justify-center gap-3 mb-4">
-                  <div className="flex space-x-3">
-                    <X className="h-8 w-8 text-red-600 dark:text-red-400" />
-                    <h3 className="text-lg font-semibold text-red-800 dark:text-red-200">Analysis Failed</h3>
+              <div className="rounded-xl border border-red-500/30 bg-red-500/[0.04] p-4">
+                <div className="flex items-start gap-3">
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+                  <div>
+                    <p className="text-[0.9rem] text-red-200">Analysis failed</p>
+                    <p className="mt-1 text-[0.8rem] font-medium leading-relaxed text-red-300/80">
+                      {error}
+                    </p>
                   </div>
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         </div>

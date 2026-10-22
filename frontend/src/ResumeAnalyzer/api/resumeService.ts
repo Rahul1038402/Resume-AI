@@ -18,7 +18,10 @@ const handleApiResponse = async (response: Response, endpoint: string) => {
       const errorData = await response.json();
       console.error(`API Error Data for ${endpoint}:`, errorData);
       if (errorData.error) {
-        errorMessage += ` - ${errorData.error}`;
+        const err = new Error(errorData.error) as Error & { status?: number; rateLimit?: unknown };
+        err.status = response.status;
+        err.rateLimit = errorData.rate_limit;
+        throw err;
       }
     } catch (jsonError) {
       console.error(`Failed to parse error JSON for ${endpoint}:`, jsonError);
@@ -156,7 +159,8 @@ function normalizeAnalysisResponse(apiResponse: any): AnalysisResult {
     skills,
     projects_with_skills: projectsWithSkills,
     quantifiable_impacts: quantifiableImpacts,
-    job_match: job
+    job_match: job,
+    rate_limit: apiResponse.rate_limit
   };
 
   console.log("Normalized Result:", result);

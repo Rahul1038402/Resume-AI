@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { FileUp } from "lucide-react";
+import { FileUp, FileCheck2 } from "lucide-react";
 
 interface ResumeUploaderProps {
   onFileSelected: (file: File) => void;
@@ -62,57 +62,47 @@ const ResumeUploader = ({ onFileSelected }: ResumeUploaderProps) => {
   };
 
   return (
-    <Card 
-      className={`p-8 border-2 border-dashed rounded-t-md ${isDragging ? 'border-resume-secondary bg-resume-light dark:bg-gray-800/50' : 'border-gray-300 dark:border-gray-700'} transition-colors bg-transparent`}
+    <Card
+      className={`rounded-xl border border-dashed p-8 transition-colors duration-200 ${
+        isDragging ? "border-white/40 bg-white/[0.04]" : "border-line-strong bg-ink-card"
+      }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <div className="text-center">
-        <div className="mb-6">
-          <div className="w-16 h-16 mx-auto bg-resume-light dark:bg-gray-700 flex items-center justify-center">
-            <FileUp className="h-8 w-8 text-resume-primary dark:text-resume-secondary" />
-          </div>
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-lg border border-line-strong bg-ink-soft">
+          {fileName ? (
+            <FileCheck2 className="h-5 w-5 text-white" strokeWidth={1.6} />
+          ) : (
+            <FileUp className="h-5 w-5 text-mute" strokeWidth={1.6} />
+          )}
         </div>
-        
-        <h3 className="text-lg font-medium mb-2 dark:text-white">
-          {fileName ? 'Resume Uploaded' : 'Upload Your Resume'}
+
+        <h3 className="text-[0.95rem] text-white">
+          {fileName ? "Resume uploaded" : "Upload your resume"}
         </h3>
-        
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          {fileName || 'Drag and drop your PDF or DOCX file here, or click to browse'}
+
+        <p className="mx-auto mt-1.5 max-w-sm text-[0.8rem] leading-relaxed text-mute-dim">
+          {fileName || "Drag a PDF or DOCX here, or browse. 5MB limit."}
         </p>
-        
-        <div className="relative">
-          <Button 
-            variant="outline" 
-            className="relative dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
-            onClick={() => {
-              const fileInput = document.getElementById('resume-file-input');
-              if (fileInput) fileInput.click();
-            }}
+
+        <div className="relative mt-5">
+          <button
+            type="button"
+            onClick={() => document.getElementById("resume-file-input")?.click()}
+            className="rounded-md border border-line-strong px-3.5 py-1.5 text-[0.8rem] font-medium text-white transition-colors duration-200 hover:border-line-bright hover:bg-white/[0.06]"
           >
-            {fileName ? 'Change File' : 'Browse Files'}
-          </Button>
-          <input 
+            {fileName ? "Change file" : "Browse files"}
+          </button>
+          <input
             id="resume-file-input"
-            type="file" 
-            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={handleFileChange}
             className="hidden"
           />
         </div>
-        
-        {fileName && (
-          <div className="mt-4 flex items-center justify-center">
-            <div className="text-sm bg-resume-light dark:bg-gray-700 rounded-full px-3 py-1 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-resume-primary dark:text-resume-secondary mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="dark:text-gray-300">{fileName}</span>
-            </div>
-          </div>
-        )}
       </div>
     </Card>
   );
